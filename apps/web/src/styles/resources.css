@@ -1,0 +1,61 @@
+.heatmap-scroll {
+  overflow: auto;
+  padding: 16px 32px 40px;
+}
+
+.heatmap {
+  border-collapse: collapse;
+  font-size: var(--fs-xs);
+}
+
+.heatmap th {
+  font-weight: 600;
+  color: var(--ink-2);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--paper-2);
+  white-space: nowrap;
+  text-align: left;
+}
+
+.heatmap th.wk {
+  font-weight: 500;
+  text-align: center;
+  min-width: 46px;
+}
+
+.heatmap th.wk.now {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.heatmap td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--paper-2);
+  white-space: nowrap;
+}
+
+.heatmap .res-name {
+  font-weight: 500;
+  color: var(--ink-0);
+  font-size: var(--fs-sm);
+  position: sticky;
+  left: 0;
+  background: var(--paper-0);
+}
+
+.heatmap .res-role {
+  color: var(--ink-2);
+}
+
+.heatmap .cell {
+  text-align: center;
+  border-left: 1px solid var(--paper-2);
+}
+
+.heatmap .cell.now {
+  border-left: 1.5px solid var(--accent);
+}
+
+.heatmap .cell.low { background: oklch(0.955 0.012 255); color: var(--ink-2); }
+.heatmap .cell.full { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.heatmap .cell.over { background: var(--critical-soft); color: var(--critical); font-weight: 700; }

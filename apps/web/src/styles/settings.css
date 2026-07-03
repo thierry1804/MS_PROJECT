@@ -1,0 +1,131 @@
+/* ---------- Settings / custom fields ---------- */
+.settings-body {
+  padding: 8px 32px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 780px;
+}
+
+.set-card {
+  border: 1px solid var(--paper-2);
+  border-radius: 8px;
+  background: var(--paper-0);
+  padding: 18px 20px;
+}
+
+.set-card h2 {
+  font-size: var(--fs-lg);
+  letter-spacing: -0.01em;
+  margin-bottom: 12px;
+}
+
+.set-empty {
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+  font-style: italic;
+}
+
+.set-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.set-table th {
+  text-align: left;
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+  font-weight: 600;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--paper-2);
+}
+
+.set-table td {
+  padding: 9px 10px;
+  border-bottom: 0.5px solid var(--paper-2);
+  color: var(--ink-1);
+}
+
+.set-table td.strong {
+  font-weight: 500;
+  color: var(--ink-0);
+}
+.set-table td.muted {
+  color: var(--ink-2);
+}
+.set-table td.c {
+  text-align: center;
+}
+
+.set-del {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  color: var(--ink-3);
+  font-size: 11px;
+}
+.set-del:hover {
+  background: var(--critical-soft);
+  color: var(--critical);
+}
+
+.set-form {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.set-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.set-field.grow {
+  flex: 1;
+  min-width: 200px;
+}
+
+.set-field > span {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
+.set-field input,
+.set-field select {
+  font-size: var(--fs-sm);
+  padding: 7px 10px;
+  border: 1px solid var(--paper-2);
+  border-radius: 6px;
+  background: var(--paper-0);
+  color: var(--ink-0);
+  outline: none;
+}
+.set-field input:focus,
+.set-field select:focus {
+  border-color: var(--accent);
+}
+
+.set-add {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--paper-0);
+  transition: background 150ms var(--ease-out);
+}
+.set-add:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.set-add:disabled {
+  background: var(--paper-2);
+  color: var(--ink-3);
+  cursor: not-allowed;
+}

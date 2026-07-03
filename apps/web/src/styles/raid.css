@@ -1,0 +1,332 @@
+/* ---------- RAID register ---------- */
+.raid-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.raid-filter {
+  font-size: var(--fs-sm);
+  padding: 6px 10px;
+  border: 1px solid var(--paper-2);
+  border-radius: var(--radius);
+  background: var(--paper-0);
+  color: var(--ink-0);
+  flex-shrink: 0;
+}
+
+.raid-body {
+  padding: 0 32px 48px;
+  overflow-y: auto;
+}
+
+/* KPIs */
+.raid-kpis {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 4px 0 8px;
+}
+
+.raid-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 16px;
+  border: 1px solid var(--paper-2);
+  border-radius: var(--radius);
+  background: var(--paper-0);
+  min-width: 116px;
+}
+
+.raid-kpi-val {
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+  color: var(--ink-0);
+  line-height: 1.1;
+}
+
+.raid-kpi-label {
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.raid-kpi.bad .raid-kpi-val {
+  color: var(--critical);
+}
+.raid-kpi.warn .raid-kpi-val {
+  color: var(--warn);
+}
+.raid-kpi.ok .raid-kpi-val {
+  color: var(--ok);
+}
+
+/* Matrix */
+.raid-matrix-section h2,
+.raid-register h2 {
+  font-size: var(--fs-lg);
+  letter-spacing: -0.01em;
+  margin: 28px 0 12px;
+}
+
+.raid-count {
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+.raid-matrix-wrap {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  grid-template-areas:
+    "yaxis matrix"
+    ". xaxis";
+  gap: 4px 8px;
+  align-items: center;
+}
+
+.raid-axis-y {
+  grid-area: yaxis;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-2);
+  text-align: center;
+}
+
+.raid-axis-x {
+  grid-area: xaxis;
+  text-align: center;
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-2);
+}
+
+.raid-matrix {
+  grid-area: matrix;
+  border-collapse: collapse;
+}
+
+.raid-mh {
+  width: 20px;
+  height: 20px;
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  font-weight: 600;
+  text-align: center;
+}
+
+.raid-cell {
+  width: 78px;
+  height: 56px;
+  border: 1px solid var(--paper-0);
+  border-radius: 4px;
+  vertical-align: top;
+  padding: 3px;
+  text-align: left;
+}
+
+.raid-cell.low {
+  background: var(--ok-soft);
+}
+.raid-cell.mid {
+  background: var(--warn-soft);
+}
+.raid-cell.high {
+  background: var(--critical-soft);
+}
+
+.raid-dot {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--paper-0);
+  background: var(--ink-1);
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin: 1px;
+}
+
+/* Tables */
+.raid-register {
+  margin-top: 8px;
+}
+
+.raid-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.raid-table th {
+  text-align: left;
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+  font-weight: 600;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--paper-2);
+}
+
+.raid-table td {
+  padding: 8px 10px;
+  border-bottom: 0.5px solid var(--paper-2);
+  color: var(--ink-1);
+  vertical-align: top;
+}
+
+.raid-table th.c,
+.raid-table td.c {
+  text-align: center;
+}
+
+.raid-table tr.done td {
+  color: var(--ink-3);
+  text-decoration: line-through;
+  text-decoration-color: var(--ink-3);
+}
+
+.raid-table td.muted {
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.raid-table .code-cell {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.raid-table td.overdue {
+  color: var(--critical);
+  font-weight: 600;
+}
+
+.raid-score {
+  display: inline-block;
+  min-width: 24px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--paper-0);
+  text-align: center;
+}
+
+.raid-score.low {
+  background: var(--ok);
+}
+.raid-score.mid {
+  background: var(--warn);
+}
+.raid-score.high {
+  background: var(--critical);
+}
+
+.raid-status {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.raid-status.open {
+  background: var(--critical-soft);
+  color: var(--critical);
+}
+.raid-status.closed {
+  background: var(--paper-2);
+  color: var(--ink-2);
+}
+.raid-status.act.a-faire {
+  background: var(--paper-2);
+  color: var(--ink-2);
+}
+.raid-status.act.en-cours {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.raid-status.act.fait {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.raid-del {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  color: var(--ink-3);
+  font-size: 11px;
+}
+.raid-del:hover {
+  background: var(--critical-soft);
+  color: var(--critical);
+}
+
+/* Add rows */
+.raid-add {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.raid-in {
+  font-size: var(--fs-sm);
+  padding: 6px 9px;
+  border: 1px solid var(--paper-2);
+  border-radius: 5px;
+  background: var(--paper-0);
+  color: var(--ink-0);
+  outline: none;
+}
+.raid-in:focus {
+  border-color: var(--accent);
+}
+.raid-in.grow {
+  flex: 1;
+  min-width: 220px;
+}
+.raid-in.mini {
+  padding: 5px 6px;
+}
+
+.raid-lbl {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.raid-add-btn {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 5px;
+  background: var(--accent);
+  color: var(--paper-0);
+  transition: background 150ms var(--ease-out);
+}
+.raid-add-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.raid-add-btn:disabled {
+  background: var(--paper-2);
+  color: var(--ink-3);
+  cursor: not-allowed;
+}

@@ -1,0 +1,156 @@
+/* ---------- Timesheets ---------- */
+.ts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.ts-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.ts-select {
+  font-size: var(--fs-sm);
+  padding: 6px 10px;
+  border: 1px solid var(--paper-2);
+  border-radius: var(--radius);
+  background: var(--paper-0);
+  color: var(--ink-0);
+}
+
+.ts-week-nav {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--paper-2);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--paper-0);
+}
+
+.ts-week-nav button {
+  width: 30px;
+  height: 30px;
+  font-size: 15px;
+  color: var(--ink-2);
+}
+.ts-week-nav button:hover {
+  background: var(--paper-1);
+  color: var(--ink-0);
+}
+
+.ts-week {
+  font-size: var(--fs-sm);
+  padding: 0 12px;
+  color: var(--ink-1);
+  min-width: 150px;
+  text-align: center;
+}
+
+.ts-body {
+  padding: 0 32px 40px;
+  overflow-y: auto;
+}
+
+.ts-kpis {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 4px 0 16px;
+}
+
+.ts-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 18px;
+  border: 1px solid var(--paper-2);
+  border-radius: var(--radius);
+  background: var(--paper-0);
+  min-width: 150px;
+}
+
+.ts-kpi-val {
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+  color: var(--ink-0);
+}
+.ts-kpi-val.ok {
+  color: var(--ok);
+}
+.ts-kpi-val.warn {
+  color: var(--warn);
+}
+.ts-kpi-val.bad {
+  color: var(--critical);
+}
+
+.ts-kpi-label {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+}
+
+.ts-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.ts-table th {
+  text-align: left;
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+  font-weight: 600;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--paper-2);
+}
+
+.ts-table th.num,
+.ts-table td.num {
+  text-align: right;
+}
+
+.ts-table td {
+  padding: 6px 12px;
+  border-bottom: 0.5px solid var(--paper-2);
+  color: var(--ink-1);
+}
+
+.ts-role {
+  color: var(--ink-3);
+  font-size: var(--fs-xs);
+}
+
+.ts-table td.muted {
+  color: var(--ink-2);
+}
+
+.ts-input {
+  width: 72px;
+  text-align: right;
+  font-size: var(--fs-sm);
+  padding: 5px 8px;
+  border: 1px solid var(--paper-2);
+  border-radius: 5px;
+  background: var(--paper-0);
+  color: var(--ink-0);
+  outline: none;
+}
+.ts-input:focus {
+  border-color: var(--accent);
+  background: var(--paper-0);
+}
+
+.ts-empty {
+  text-align: center;
+  color: var(--ink-3);
+  font-style: italic;
+  padding: 24px;
+}
