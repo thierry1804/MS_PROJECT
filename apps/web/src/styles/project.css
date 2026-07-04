@@ -1,6 +1,7 @@
 .project-header {
-  justify-content: space-between;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
   padding-bottom: 16px;
 }
 
@@ -22,20 +23,65 @@
 
 .project-meta {
   display: flex;
-  gap: 20px;
-  margin-top: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
   font-size: var(--fs-sm);
   color: var(--ink-2);
 }
 
+.project-meta .pm-owner {
+  color: var(--ink-1);
+  font-weight: 500;
+}
+
+.project-meta .pm-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--ink-3);
+  flex-shrink: 0;
+}
+
+.project-meta .pm-arrow {
+  color: var(--ink-3);
+  padding: 0 1px;
+}
+
+.project-meta .pm-sub {
+  color: var(--ink-3);
+}
+
 .project-meta .crit-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   color: var(--critical);
   font-weight: 500;
 }
 
+.project-meta .crit-count::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--critical);
+}
+
 .project-meta .overload-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   color: var(--warn);
   font-weight: 500;
+}
+
+.project-meta .overload-count::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warn);
 }
 
 .toolbar-btn.warn {
@@ -47,6 +93,32 @@
 .toolbar-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.toolbar-btn.danger {
+  color: var(--critical);
+}
+.toolbar-btn.danger:hover {
+  background: var(--critical-soft);
+  border-color: var(--critical);
+}
+
+.toolbar-group {
+  display: inline-flex;
+}
+.toolbar-group .toolbar-btn {
+  border-radius: 0;
+  font-size: 13px;
+  padding: 5px 9px;
+}
+.toolbar-group .toolbar-btn:first-child {
+  border-top-left-radius: var(--radius);
+  border-bottom-left-radius: var(--radius);
+}
+.toolbar-group .toolbar-btn:last-child {
+  border-top-right-radius: var(--radius);
+  border-bottom-right-radius: var(--radius);
+  border-left: none;
 }
 
 .zoom-switch {
@@ -147,13 +219,26 @@
   cursor: default;
 }
 
-.task-grid tr.selected td {
-  background: var(--accent-soft);
+.task-grid tbody tr:hover:not(.selected) td {
+  background: var(--paper-1);
+}
+
+.task-grid tr.summary:not(.selected) td {
+  background: var(--paper-1);
 }
 
 .task-grid tr.summary td {
   font-weight: 600;
   color: var(--ink-0);
+}
+
+.task-grid tr.selected td {
+  background: var(--accent-soft);
+}
+
+.task-grid tr.selected .wbs {
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .task-grid tr.critical .name-text {
@@ -277,12 +362,166 @@
   background: var(--paper-1);
 }
 
-/* ---------- Toolbar ---------- */
+/* ---------- Toolbar ----------
+   Own full-width row below the title. Container query on its own inline
+   size lets buttons drop their text label for an icon once space is tight,
+   regardless of viewport — the toolbar can be narrowed by a sidebar or
+   inspector panel without ever depending on window width. */
 .project-toolbar {
+  container: ptoolbar / inline-size;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px 4px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  row-gap: 8px;
+}
+
+.tb-cluster {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Base toolbar button — calm, secondary, icon + label */
+.tb-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  line-height: 1;
+  padding: 6px 11px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  color: var(--ink-1);
+  background: transparent;
+  white-space: nowrap;
+  transition: background 150ms var(--ease-out), color 150ms var(--ease-out),
+    border-color 150ms var(--ease-out);
+}
+
+.tb-btn svg {
   flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.tb-btn.tb-accent svg {
+  opacity: 1;
+}
+
+.tb-btn:hover {
+  background: var(--paper-2);
+}
+
+.tb-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Anchor action of the view */
+.tb-btn.tb-accent {
+  color: var(--accent);
+  border-color: var(--paper-2);
+  background: var(--paper-0);
+}
+
+.tb-btn.tb-accent:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+/* Toggled-on state (baseline captured, écarts shown) */
+.tb-btn.on {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.tb-btn.tb-warn {
+  color: var(--warn);
+  background: var(--warn-soft);
+}
+
+.tb-btn:disabled {
+  color: var(--ink-3);
+  background: transparent;
+  cursor: not-allowed;
+}
+
+/* Icon buttons (indent / outdent / delete) */
+.tb-icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--ink-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  transition: background 150ms var(--ease-out), color 150ms var(--ease-out);
+}
+
+.tb-icon:hover:not(:disabled) {
+  background: var(--paper-2);
+  color: var(--ink-0);
+}
+
+.tb-icon:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.tb-icon:disabled {
+  color: var(--ink-3);
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.tb-icon.tb-danger:hover {
+  background: var(--critical-soft);
+  color: var(--critical);
+}
+
+/* Segmented indent/outdent pair */
+.tb-seg {
+  display: inline-flex;
+  border: 1px solid var(--paper-2);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.tb-seg .tb-icon {
+  border-radius: 0;
+  width: 26px;
+  height: 26px;
+}
+
+.tb-seg .tb-icon + .tb-icon {
+  border-left: 1px solid var(--paper-2);
+}
+
+/* Progressive label collapse: icon remains, text drops, title attr still
+   gives the name on hover. "+ Tâche" keeps its label at every width — it's
+   the view's anchor action. */
+.tb-label {
+  overflow: hidden;
+}
+
+@container ptoolbar (max-width: 860px) {
+  .tb-label.tier1 {
+    display: none;
+  }
+  .tb-cluster .tb-btn {
+    padding-inline: 8px;
+  }
+}
+
+@container ptoolbar (max-width: 580px) {
+  .tb-label.tier2 {
+    display: none;
+  }
 }
 
 .toolbar-btn {

@@ -5,6 +5,18 @@ import { Gantt, GanttHeader } from "../components/Gantt";
 import { TaskGrid } from "../components/TaskGrid";
 import { TaskInspector } from "../components/TaskInspector";
 import { HealthBadge, StatusBadge } from "../components/badges";
+import {
+  DocIcon,
+  DownloadIcon,
+  FlagIcon,
+  GapIcon,
+  IndentIcon,
+  OutdentIcon,
+  PlusIcon,
+  ScaleIcon,
+  SubtaskIcon,
+  TrashIcon,
+} from "../components/icons";
 import { exportProjectCsv } from "../export";
 import { EUR, fmtDate, todayISO } from "../domain";
 import { buildRange } from "../gantt-utils";
@@ -35,6 +47,11 @@ export function ProjectView() {
   const removeDependency = useStore((s) => s.removeDependency);
   const captureBaseline = useStore((s) => s.captureBaseline);
   const applyLeveling = useStore((s) => s.applyLeveling);
+  const addTask = useStore((s) => s.addTask);
+  const addSubTask = useStore((s) => s.addSubTask);
+  const indentTask = useStore((s) => s.indentTask);
+  const outdentTask = useStore((s) => s.outdentTask);
+  const deleteTask = useStore((s) => s.deleteTask);
   const [zoom, setZoom] = useState(1);
   const [showVariance, setShowVariance] = useState(false);
 
@@ -93,63 +110,122 @@ export function ProjectView() {
   return (
     <>
       <div className="view-header project-header">
-        <div>
-          <div className="project-title-row">
-            <h1>{project.name}</h1>
-            <span className="project-code tnum">{project.code}</span>
-            <StatusBadge status={project.status} />
-            <HealthBadge health={project.health} />
-          </div>
-          <div className="project-meta tnum">
-            <span>{project.manager}</span>
-            <span>
-              {fmtDate(project.projectStart, true)} → {fmtDate(schedule.projectFinishDate, true)}
-            </span>
-            <span>
-              Budget {EUR.format(project.budget)} · plan {EUR.format(metrics.plannedCost)}
-            </span>
-            <span>{Math.round(metrics.percentComplete)} % réalisé</span>
-            <span className="crit-count">{metrics.criticalCount} tâches critiques</span>
-            {overloadedResources > 0 && (
-              <span className="overload-count">
-                {overloadedResources} ressource{overloadedResources > 1 ? "s" : ""} en surcharge
-              </span>
+        <div className="project-title-row">
+          <h1>{project.name}</h1>
+          <span className="project-code tnum">{project.code}</span>
+          <StatusBadge status={project.status} />
+          <HealthBadge health={project.health} />
+        </div>
+
+        <div className="project-toolbar">
+          <div className="tb-cluster" role="group" aria-label="Édition des tâches">
+            <button
+              className="tb-btn tb-accent"
+              onClick={() => addTask(project.id)}
+              title="Ajouter une tâche racine vide"
+            >
+              <PlusIcon />
+              <span className="tb-label">Tâche</span>
+            </button>
+            {selectedTaskId && (
+              <>
+                <button
+                  className="tb-btn"
+                  onClick={() => addSubTask(project.id, selectedTaskId)}
+                  title={`Ajouter une sous-tâche à « ${selectedTask?.name} »`}
+                  aria-label="Ajouter une sous-tâche"
+                >
+                  <SubtaskIcon />
+                  <span className="tb-label tier2">Sous-tâche</span>
+                </button>
+                <div className="tb-seg" role="group" aria-label="Niveau hiérarchique">
+                  <button
+                    className="tb-icon"
+                    onClick={() => outdentTask(project.id, selectedTaskId)}
+                    disabled={!selectedTask || selectedTask.parentId == null}
+                    title="Hausser d'un niveau (Maj+Tab)"
+                    aria-label="Hausser d'un niveau"
+                  >
+                    <OutdentIcon />
+                  </button>
+                  <button
+                    className="tb-icon"
+                    onClick={() => indentTask(project.id, selectedTaskId)}
+                    title="Abaisser : sous-tâche de la ligne du dessus (Tab)"
+                    aria-label="Abaisser d'un niveau"
+                  >
+                    <IndentIcon />
+                  </button>
+                </div>
+                <button
+                  className="tb-icon tb-danger"
+                  onClick={() => {
+                    if (confirm("Supprimer cette tâche et ses sous-tâches ?")) deleteTask(project.id, selectedTaskId);
+                  }}
+                  title="Supprimer la tâche et son sous-arbre"
+                  aria-label="Supprimer la tâche"
+                >
+                  <TrashIcon />
+                </button>
+              </>
             )}
           </div>
-        </div>
-        <div className="project-toolbar">
-          <button
-            className="toolbar-btn"
-            onClick={() => captureBaseline(project.id)}
-            title="Capturer la baseline pour le suivi des écarts"
-          >
-            {project.baselineCapturedAt ? `Baseline : ${fmtDate(project.baselineCapturedAt)}` : "Capturer baseline"}
-          </button>
-          <button
-            className={`toolbar-btn${showVariance ? " active" : ""}`}
-            onClick={() => setShowVariance((v) => !v)}
-            title="Afficher les colonnes d'écart planning et coût, et la baseline sur le Gantt"
-          >
-            Écarts {showVariance ? "▴" : "▾"}
-          </button>
-          <button
-            className="toolbar-btn"
-            onClick={() => exportProjectCsv(project, schedule, portfolio.resources)}
-            title="Exporter les tâches en CSV"
-          >
-            Export CSV
-          </button>
-          <button
-            className={`toolbar-btn${overloadedResources > 0 ? " warn" : ""}`}
-            onClick={() => applyLeveling(project.id)}
-            disabled={overloadedResources === 0}
-            title="Niveler : décale les tâches pour résorber les surcharges de ressources"
-          >
-            Niveler{overloadedResources > 0 ? ` (${overloadedResources})` : ""}
-          </button>
-          <Link className="toolbar-btn" to={`/projets/${project.id}/rapport`} title="Rapport flash pour comité">
-            Rapport
-          </Link>
+
+          <div className="tb-cluster" role="group" aria-label="Analyse">
+            <button
+              className={`tb-btn${project.baselineCapturedAt ? " on" : ""}`}
+              onClick={() => captureBaseline(project.id)}
+              title="Capturer la baseline pour le suivi des écarts"
+              aria-label="Capturer la baseline"
+            >
+              <FlagIcon />
+              <span className="tb-label tier1">
+                {project.baselineCapturedAt ? `Baseline · ${fmtDate(project.baselineCapturedAt)}` : "Capturer baseline"}
+              </span>
+            </button>
+            <button
+              className={`tb-btn${showVariance ? " on" : ""}`}
+              onClick={() => setShowVariance((v) => !v)}
+              title="Colonnes d'écart planning/coût et baseline sur le Gantt"
+              aria-pressed={showVariance}
+              aria-label="Afficher les écarts"
+            >
+              <GapIcon />
+              <span className="tb-label tier1">Écarts</span>
+            </button>
+            <button
+              className={`tb-btn${overloadedResources > 0 ? " tb-warn" : ""}`}
+              onClick={() => applyLeveling(project.id)}
+              disabled={overloadedResources === 0}
+              title="Niveler : décale les tâches pour résorber les surcharges de ressources"
+              aria-label="Niveler les ressources"
+            >
+              <ScaleIcon />
+              <span className="tb-label tier1">Niveler{overloadedResources > 0 ? ` · ${overloadedResources}` : ""}</span>
+            </button>
+          </div>
+
+          <div className="tb-cluster" role="group" aria-label="Sortie">
+            <button
+              className="tb-btn"
+              onClick={() => exportProjectCsv(project, schedule, portfolio.resources)}
+              title="Exporter les tâches en CSV"
+              aria-label="Exporter en CSV"
+            >
+              <DownloadIcon />
+              <span className="tb-label tier1">Export CSV</span>
+            </button>
+            <Link
+              className="tb-btn"
+              to={`/projets/${project.id}/rapport`}
+              title="Rapport flash pour comité"
+              aria-label="Rapport flash"
+            >
+              <DocIcon />
+              <span className="tb-label tier1">Rapport</span>
+            </Link>
+          </div>
+
           <div className="zoom-switch" role="group" aria-label="Échelle de temps">
             {ZOOMS.map((z, i) => (
               <button
@@ -161,6 +237,33 @@ export function ProjectView() {
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="project-meta tnum">
+          <span className="pm-owner">{project.manager}</span>
+          <span className="pm-dot" />
+          <span>
+            {fmtDate(project.projectStart, true)} <span className="pm-arrow">→</span>{" "}
+            {fmtDate(schedule.projectFinishDate, true)}
+          </span>
+          <span className="pm-dot" />
+          <span>
+            Budget {EUR.format(project.budget)}{" "}
+            <span className="pm-sub">· plan {EUR.format(metrics.plannedCost)}</span>
+          </span>
+          <span className="pm-dot" />
+          <span>{Math.round(metrics.percentComplete)} % réalisé</span>
+          {metrics.criticalCount > 0 && (
+            <span className="crit-count">
+              {metrics.criticalCount} tâche{metrics.criticalCount > 1 ? "s" : ""} critique
+              {metrics.criticalCount > 1 ? "s" : ""}
+            </span>
+          )}
+          {overloadedResources > 0 && (
+            <span className="overload-count">
+              {overloadedResources} ressource{overloadedResources > 1 ? "s" : ""} en surcharge
+            </span>
+          )}
         </div>
       </div>
 

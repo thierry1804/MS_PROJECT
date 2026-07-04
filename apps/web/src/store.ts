@@ -62,6 +62,16 @@ interface AppState {
   /** Define a new task-level custom field. */
   addCustomField: (field: CustomFieldDef) => void;
   removeCustomField: (id: string) => void;
+  /** Append a new empty leaf task at root level. */
+  addTask: (projectId: string) => void;
+  /** Append a new leaf task as a child of parentTaskId. */
+  addSubTask: (projectId: string, parentTaskId: string) => void;
+  /** Indent: make the task a child of its previous sibling (that sibling becomes a summary). */
+  indentTask: (projectId: string, taskId: string) => void;
+  /** Outdent: promote the task to sit right after its former parent, one level up. */
+  outdentTask: (projectId: string, taskId: string) => void;
+  /** Delete a task and its whole subtree, plus any dependency touching them. */
+  deleteTask: (projectId: string, taskId: string) => void;
 }
 
 function slugId(code: string): string {
@@ -354,6 +364,147 @@ export const useStore = create<AppState>()(
         })),
       },
     })),
+
+  addTask: (projectId) =>
+    set((s) => {
+      const project = s.portfolio.projects.find((p) => p.id === projectId);
+      if (!project) return s;
+      const maxOrder = project.tasks.reduce((m, t) => Math.max(m, t.order), -1);
+      const newTask: Task = {
+        id: `${projectId}-t-${Math.random().toString(36).slice(2, 6)}`,
+        name: "Nouvelle tâche",
+        parentId: null,
+        order: maxOrder + 1,
+        duration: 1,
+        percentComplete: 0,
+        assignments: [],
+      };
+      return {
+        portfolio: {
+          ...s.portfolio,
+          projects: s.portfolio.projects.map((p) =>
+            p.id !== projectId ? p : { ...p, tasks: [...p.tasks, newTask] },
+          ),
+        },
+      };
+    }),
+
+  addSubTask: (projectId, parentTaskId) =>
+    set((s) => {
+      const project = s.portfolio.projects.find((p) => p.id === projectId);
+      if (!project) return s;
+      const siblings = project.tasks.filter((t) => t.parentId === parentTaskId);
+      const maxOrder = siblings.reduce((m, t) => Math.max(m, t.order), -1);
+      const newTask: Task = {
+        id: `${projectId}-t-${Math.random().toString(36).slice(2, 6)}`,
+        name: "Nouvelle sous-tâche",
+        parentId: parentTaskId,
+        order: maxOrder + 1,
+        duration: 1,
+        percentComplete: 0,
+        assignments: [],
+      };
+      return {
+        portfolio: {
+          ...s.portfolio,
+          projects: s.portfolio.projects.map((p) =>
+            p.id !== projectId ? p : { ...p, tasks: [...p.tasks, newTask] },
+          ),
+        },
+      };
+    }),
+
+  indentTask: (projectId, taskId) =>
+    set((s) => {
+      const project = s.portfolio.projects.find((p) => p.id === projectId);
+      if (!project) return s;
+      const task = project.tasks.find((t) => t.id === taskId);
+      if (!task) return s;
+      // Previous sibling = the task just above it at the same level.
+      const siblings = project.tasks
+        .filter((t) => t.parentId === task.parentId)
+        .sort((a, b) => a.order - b.order);
+      const idx = siblings.findIndex((t) => t.id === taskId);
+      if (idx <= 0) return s; // no previous sibling → cannot indent
+      const prev = siblings[idx - 1]!;
+      const newParentId = prev.id;
+      const maxChildOrder = project.tasks
+        .filter((t) => t.parentId === newParentId)
+        .reduce((m, t) => Math.max(m, t.order), -1);
+      return {
+        portfolio: {
+          ...s.portfolio,
+          projects: s.portfolio.projects.map((p) =>
+            p.id !== projectId
+              ? p
+              : {
+                  ...p,
+                  tasks: p.tasks.map((t) =>
+                    t.id !== taskId ? t : { ...t, parentId: newParentId, order: maxChildOrder + 1 },
+                  ),
+                },
+          ),
+        },
+      };
+    }),
+
+  outdentTask: (projectId, taskId) =>
+    set((s) => {
+      const project = s.portfolio.projects.find((p) => p.id === projectId);
+      if (!project) return s;
+      const task = project.tasks.find((t) => t.id === taskId);
+      if (!task || task.parentId == null) return s; // already at root
+      const parent = project.tasks.find((t) => t.id === task.parentId);
+      if (!parent) return s;
+      const newParentId = parent.parentId;
+      // Insert right after the former parent: bump later siblings at the target level.
+      const tasks = project.tasks.map((t) => {
+        if (t.id === taskId) return { ...t, parentId: newParentId, order: parent.order + 1 };
+        if (t.parentId === newParentId && t.order > parent.order) return { ...t, order: t.order + 1 };
+        return t;
+      });
+      return {
+        portfolio: {
+          ...s.portfolio,
+          projects: s.portfolio.projects.map((p) => (p.id !== projectId ? p : { ...p, tasks })),
+        },
+      };
+    }),
+
+  deleteTask: (projectId, taskId) =>
+    set((s) => {
+      const project = s.portfolio.projects.find((p) => p.id === projectId);
+      if (!project) return s;
+      // Collect the task and all its descendants.
+      const doomed = new Set<string>([taskId]);
+      let grew = true;
+      while (grew) {
+        grew = false;
+        for (const t of project.tasks) {
+          if (t.parentId && doomed.has(t.parentId) && !doomed.has(t.id)) {
+            doomed.add(t.id);
+            grew = true;
+          }
+        }
+      }
+      return {
+        selectedTaskId: doomed.has(s.selectedTaskId ?? "") ? null : s.selectedTaskId,
+        portfolio: {
+          ...s.portfolio,
+          projects: s.portfolio.projects.map((p) =>
+            p.id !== projectId
+              ? p
+              : {
+                  ...p,
+                  tasks: p.tasks.filter((t) => !doomed.has(t.id)),
+                  dependencies: p.dependencies.filter(
+                    (d) => !doomed.has(d.predecessorId) && !doomed.has(d.successorId),
+                  ),
+                },
+          ),
+        },
+      };
+    }),
     }),
     {
       name: "atelier-pmo",
