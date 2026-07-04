@@ -6,6 +6,7 @@ import {
   taskPlannedCost,
   type Dependency,
   type ProjectMetrics,
+  type Resource,
   type ScheduleResult,
   type Task,
 } from "@atelier/scheduling-engine";
@@ -105,6 +106,11 @@ interface AppState {
   addGovernanceEvent: (event: GovernanceEvent) => void;
   /** Log an internal-satisfaction survey response for the NPS KPI. */
   addSurveyResponse: (response: SurveyResponse) => void;
+  /** Add a resource to the portfolio pool. */
+  addResource: (resource: Resource) => void;
+  updateResource: (id: string, patch: Partial<Resource>) => void;
+  /** Remove a resource and strip any assignment referencing it from every project's tasks. */
+  removeResource: (id: string) => void;
   /** Define a new task-level custom field. */
   addCustomField: (field: CustomFieldDef) => void;
   removeCustomField: (id: string) => void;
@@ -451,6 +457,50 @@ export const useStore = create<AppState>()((set, get) => ({
       action: "create",
       summary: `Réponse baromètre PMO enregistrée (score ${response.score}/10)`,
     });
+  },
+
+  addResource: (resource) => {
+    set((s) => ({ portfolio: { ...s.portfolio, resources: [...s.portfolio.resources, resource] } }));
+    void logAudit({
+      entityType: "resource",
+      entityId: resource.id,
+      action: "create",
+      summary: `Ressource ajoutée : ${resource.name}`,
+    });
+  },
+
+  updateResource: (id, patch) =>
+    set((s) => ({
+      portfolio: {
+        ...s.portfolio,
+        resources: s.portfolio.resources.map((r) => (r.id !== id ? r : { ...r, ...patch })),
+      },
+    })),
+
+  removeResource: (id) => {
+    const before = get().portfolio.resources.find((r) => r.id === id);
+    set((s) => ({
+      portfolio: {
+        ...s.portfolio,
+        resources: s.portfolio.resources.filter((r) => r.id !== id),
+        projects: s.portfolio.projects.map((p) => ({
+          ...p,
+          tasks: p.tasks.map((t) =>
+            t.assignments.some((a) => a.resourceId === id)
+              ? { ...t, assignments: t.assignments.filter((a) => a.resourceId !== id) }
+              : t,
+          ),
+        })),
+      },
+    }));
+    if (before) {
+      void logAudit({
+        entityType: "resource",
+        entityId: id,
+        action: "delete",
+        summary: `Ressource supprimée : ${before.name}`,
+      });
+    }
   },
 
   moveDemand: (id, stage, gate) => {

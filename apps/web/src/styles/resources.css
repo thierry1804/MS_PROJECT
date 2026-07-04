@@ -1,3 +1,31 @@
+.res-manage {
+  padding: 16px 32px 0;
+}
+
+.res-manage h2 {
+  font-size: var(--fs-lg);
+  letter-spacing: -0.01em;
+  margin: 0 0 12px;
+}
+
+.res-manage-table td {
+  vertical-align: middle;
+}
+
+.res-manage-table .raid-in {
+  width: 100%;
+}
+
+.res-manage-table .raid-in.mini {
+  width: 72px;
+}
+
+@media (max-width: 640px) {
+  .res-manage {
+    padding: 16px 16px 0;
+  }
+}
+
 .heatmap-scroll {
   overflow: auto;
   padding: 16px 32px 40px;
