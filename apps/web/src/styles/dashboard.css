@@ -51,6 +51,11 @@
   margin: 32px 0 12px;
 }
 
+.dash-map h2,
+.dash-exceptions h2 {
+  margin-top: 24px;
+}
+
 .dash-projects {
   margin-top: 8px;
 }
@@ -100,6 +105,179 @@
 
 a.code-cell:hover {
   color: var(--accent);
+}
+
+/* ---------- Portfolio map ----------
+   One rectangle per project, width proportional to its approved budget
+   (flexGrow = budget in the component), tinted by cost performance (CPI
+   band) rather than the RAG health flag — this cell is deliberately about
+   money only, so it can disagree with health when a project is on track
+   operationally but drifting on cost, or vice versa. */
+.map-row {
+  display: flex;
+  gap: 6px;
+  height: 96px;
+}
+
+.map-cell {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 2px;
+  padding: 10px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  cursor: pointer;
+  min-width: 64px;
+  transition: filter 150ms var(--ease-out);
+}
+
+.map-cell:hover {
+  filter: brightness(0.97);
+}
+
+.map-cell.ok {
+  background: var(--ok-soft);
+  border-color: color-mix(in srgb, var(--ok) 35%, transparent);
+}
+
+.map-cell.warn {
+  background: var(--warn-soft);
+  border-color: color-mix(in srgb, var(--warn) 35%, transparent);
+}
+
+.map-cell.danger {
+  background: var(--critical-soft);
+  border-color: color-mix(in srgb, var(--critical) 35%, transparent);
+}
+
+.map-cell.na {
+  background: var(--paper-2);
+  border-color: var(--ink-3);
+}
+
+.map-code {
+  font-size: 10px;
+  font-weight: 600;
+  font-family: ui-monospace, Menlo, monospace;
+  color: var(--ink-2);
+}
+
+.map-budget {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--ink-0);
+}
+
+.map-status {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.map-cell.ok .map-status {
+  color: oklch(0.4 0.1 150);
+}
+
+.map-cell.warn .map-status {
+  color: oklch(0.5 0.11 75);
+}
+
+.map-cell.danger .map-status {
+  color: var(--critical);
+}
+
+/* ---------- Exceptions ----------
+   Management-by-exception: only projects whose CPI has drifted past
+   tolerance (see financeStatus in DashboardView) get a card. Everything
+   else collapses into the single "dans les clous" line below, so the panel
+   stays short as the portfolio grows instead of listing every project. */
+.exception-card {
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 8px;
+  border: 1px solid var(--paper-2);
+}
+
+.exception-card.warn {
+  border-color: color-mix(in srgb, var(--warn) 40%, transparent);
+}
+
+.exception-card.danger {
+  border-color: color-mix(in srgb, var(--critical) 40%, transparent);
+}
+
+.exception-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 14px;
+}
+
+.exception-card.warn .exception-head {
+  background: color-mix(in srgb, var(--warn-soft) 70%, transparent);
+}
+
+.exception-card.danger .exception-head {
+  background: color-mix(in srgb, var(--critical-soft) 70%, transparent);
+}
+
+.exception-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--ink-0);
+}
+
+.exception-metric {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.exception-card.warn .exception-metric {
+  color: oklch(0.5 0.11 75);
+}
+
+.exception-card.danger .exception-metric {
+  color: var(--critical);
+}
+
+.exception-body {
+  padding: 8px 14px;
+  font-size: var(--fs-sm);
+  color: var(--ink-1);
+}
+
+.exception-body a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.exception-body a:hover {
+  text-decoration: underline;
+}
+
+.exception-empty {
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+  font-style: italic;
+}
+
+.exception-ok-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px 4px;
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+}
+
+.exception-ok-mark {
+  color: var(--ok);
 }
 
 /* ---------- Roadmap ---------- */
@@ -200,5 +378,16 @@ a.code-cell:hover {
   .dash-header {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .map-row {
+    flex-wrap: wrap;
+    height: auto;
+  }
+
+  .map-cell {
+    flex-grow: 1 !important;
+    min-width: 140px;
+    height: 80px;
   }
 }

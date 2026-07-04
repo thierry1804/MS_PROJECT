@@ -14,6 +14,27 @@ function evmCls(val: number): string {
   return val >= 1.0 ? "evm-good" : val >= 0.8 ? "evm-warn" : "evm-bad";
 }
 
+/* ---------- Financial status (drives the portfolio map + exceptions) ----------
+   "na" = project hasn't started spending yet (plannedCost <= 0), so CPI is
+   meaningless. Thresholds mirror the tolerance already implied by evmCls
+   (>=0.97 healthy · 0.90-0.97 watch · <0.90 drifting) but collapsed to three
+   bands since the map/exceptions need a single glanceable verdict. */
+type FinanceStatus = "ok" | "warn" | "danger" | "na";
+
+function financeStatus(plannedCost: number, cpi: number): FinanceStatus {
+  if (plannedCost <= 0) return "na";
+  if (cpi >= 0.97) return "ok";
+  if (cpi >= 0.9) return "warn";
+  return "danger";
+}
+
+const FINANCE_LABEL: Record<FinanceStatus, string> = {
+  ok: "sain",
+  warn: "à surveiller",
+  danger: "en dérive",
+  na: "pas encore engagé",
+};
+
 interface UpcomingMilestone {
   project: Project;
   name: string;
@@ -41,6 +62,38 @@ export function DashboardView() {
   const totalBudget = rows.reduce((s, r) => s + r.project.budget, 0);
   const totalPlanned = rows.reduce((s, r) => s + r.metrics.plannedCost, 0);
   const atRisk = rows.filter((r) => r.project.health !== "green").length;
+
+  /* Portfolio map: one rectangle per project, width proportional to its
+     approved budget, tinted by cost performance rather than the RAG health
+     flag — health mixes several risk dimensions, this cell is deliberately
+     about money only. */
+  const financeRows = useMemo(
+    () => rows.map((r) => ({ ...r, status: financeStatus(r.metrics.plannedCost, r.metrics.cpi) })),
+    [rows],
+  );
+
+  /* Exceptions: only projects whose cost performance has drifted past
+     tolerance get a card; everything else is folded into a single
+     "dans les clous" line so the panel stays short even as the portfolio
+     grows. Sorted worst cost variance first. */
+  const exceptions = useMemo(
+    () =>
+      financeRows
+        .filter((r) => r.status === "warn" || r.status === "danger")
+        .map((r) => {
+          const cv = r.metrics.earnedValue - r.metrics.ac;
+          const topRisk = [...r.project.risks]
+            .filter((x) => x.status === "ouvert")
+            .sort((a, b) => b.probability * b.impact - a.probability * a.impact)[0];
+          return { ...r, cv, topRisk };
+        })
+        .sort((a, b) => a.cv - b.cv),
+    [financeRows],
+  );
+
+  const onTrackCodes = financeRows
+    .filter((r) => r.status === "ok" || r.status === "na")
+    .map((r) => r.project.code);
 
   function exportPortfolio() {
     downloadJson(`portefeuille-${today}.json`, {
@@ -168,6 +221,56 @@ export function DashboardView() {
       )}
 
       <div className="view-body dashboard">
+        <section className="dash-map">
+          <h2>Poids budgétaire &amp; santé</h2>
+          <div className="map-row">
+            {financeRows.map(({ project, metrics, status }) => (
+              <div
+                key={project.id}
+                className={`map-cell ${status}`}
+                style={{ flexGrow: project.budget, flexBasis: 0 }}
+                onClick={() => navigate(`/projets/${project.id}`)}
+                title={`${project.name} · ${EUR.format(project.budget)}`}
+              >
+                <span className="map-code">{project.code}</span>
+                <span className="map-budget tnum">{EUR.format(project.budget)}</span>
+                <span className="map-status">
+                  {status === "na" ? FINANCE_LABEL.na : `ICP ${metrics.cpi.toFixed(2)} · ${FINANCE_LABEL[status]}`}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="dash-exceptions">
+          <h2>À traiter</h2>
+          {exceptions.map(({ project, metrics, cv, topRisk, status }) => (
+            <div key={project.id} className={`exception-card ${status}`}>
+              <div className="exception-head">
+                <span className="exception-title">
+                  <span className={`health-dot health-${project.health}`} />
+                  {project.name} <span className="code-cell">{project.code}</span>
+                </span>
+                <span className="exception-metric tnum">
+                  ICP {metrics.cpi.toFixed(2)} · CV {cv >= 0 ? "+" : "−"}
+                  {EUR.format(Math.abs(cv))}
+                </span>
+              </div>
+              <div className="exception-body">
+                {topRisk ? `Risque probable : ${topRisk.label}. ` : "Coût planifié au-delà du seuil de tolérance. "}
+                <Link to={`/projets/${project.id}`}>Voir le projet →</Link>
+              </div>
+            </div>
+          ))}
+          {exceptions.length === 0 && <p className="exception-empty">Aucun projet hors seuil.</p>}
+          {onTrackCodes.length > 0 && (
+            <div className="exception-ok-line">
+              <span className="exception-ok-mark">✓</span>
+              {onTrackCodes.join(", ")} dans les clous
+            </div>
+          )}
+        </section>
+
         <section className="dash-projects">
           <table className="data-table">
             <thead>
