@@ -312,6 +312,23 @@ a.toolbar-btn {
   align-items: center;
 }
 
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+  .report-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .report-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .report-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ---------- Print ---------- */
 @media print {
   .sidebar,

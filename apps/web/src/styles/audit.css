@@ -59,3 +59,13 @@
 .audit-summary {
   color: var(--ink-1);
 }
+
+@media (max-width: 640px) {
+  .audit-body {
+    padding: 16px 16px 32px;
+  }
+
+  .audit-row {
+    flex-wrap: wrap;
+  }
+}

@@ -184,3 +184,21 @@ a.code-cell:hover {
 .risk-score.danger { background: var(--critical-soft); color: var(--critical); }
 .risk-score.warn { background: var(--warn-soft); color: oklch(0.5 0.11 75); }
 .risk-score.neutral { background: var(--paper-2); color: var(--ink-2); }
+
+@media (max-width: 900px) {
+  .dashboard {
+    padding: 0 16px 32px;
+  }
+
+  .dash-columns {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  .dash-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

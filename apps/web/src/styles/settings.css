@@ -129,3 +129,9 @@
   color: var(--ink-3);
   cursor: not-allowed;
 }
+
+@media (max-width: 640px) {
+  .settings-body {
+    padding: 8px 16px 32px;
+  }
+}

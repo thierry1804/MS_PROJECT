@@ -626,3 +626,40 @@
   color: var(--ink-2);
   font-size: var(--fs-xs);
 }
+
+/* ---------- Responsive split ---------- */
+@media (max-width: 1180px) {
+  .grid-pane {
+    width: 380px;
+  }
+}
+
+@media (max-width: 900px) {
+  .project-split {
+    flex-direction: column;
+    overflow: auto;
+  }
+
+  .grid-pane {
+    width: auto;
+    height: 42vh;
+    flex-shrink: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--ink-3);
+  }
+
+  .gantt-pane {
+    flex: 1;
+    min-height: 260px;
+  }
+}
+
+@media (max-width: 760px) {
+  .evm-strip {
+    padding: 8px 16px;
+  }
+
+  .project-hint {
+    padding-left: 16px;
+  }
+}

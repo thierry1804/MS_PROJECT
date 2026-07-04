@@ -21,6 +21,17 @@
   overflow-y: auto;
 }
 
+@media (max-width: 640px) {
+  .raid-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .raid-body {
+    padding: 0 16px 40px;
+  }
+}
+
 /* KPIs */
 .raid-kpis {
   display: flex;

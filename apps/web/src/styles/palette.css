@@ -7,7 +7,7 @@
   align-items: flex-start;
   justify-content: center;
   z-index: 60;
-  padding-top: 12vh;
+  padding: 12vh 16px 16px;
   animation: modal-fade 140ms var(--ease-out);
 }
 

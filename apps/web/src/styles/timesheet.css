@@ -154,3 +154,14 @@
   font-style: italic;
   padding: 24px;
 }
+
+@media (max-width: 640px) {
+  .ts-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ts-body {
+    padding: 0 16px 32px;
+  }
+}

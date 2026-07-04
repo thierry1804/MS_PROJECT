@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { CommandPalette } from "./components/CommandPalette";
-import { SearchIcon } from "./components/icons";
+import { MenuIcon, SearchIcon } from "./components/icons";
 import { useStore, type SyncStatus } from "./store";
 import type { Health } from "./domain";
 import "./styles/palette.css";
@@ -34,6 +34,7 @@ export function Shell() {
   const retrySync = useStore((s) => s.retrySync);
   const [filter, setFilter] = useState("");
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -58,7 +59,11 @@ export function Shell() {
 
   return (
     <div className="shell">
-      <aside className="sidebar">
+      <div
+        className={`sidebar-scrim${sidebarOpen ? " open" : ""}`}
+        onClick={() => setSidebarOpen(false)}
+      />
+      <aside className={`sidebar${sidebarOpen ? " open" : ""}`}>
         <div className="sidebar-brand">
           Atelier
           <small>Portefeuille DSI 2026</small>
@@ -69,6 +74,7 @@ export function Shell() {
             key={item.to}
             to={item.to}
             end={item.end}
+            onClick={() => setSidebarOpen(false)}
             className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
           >
             {item.label}
@@ -101,6 +107,7 @@ export function Shell() {
           <NavLink
             key={p.id}
             to={`/projets/${p.id}`}
+            onClick={() => setSidebarOpen(false)}
             className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
           >
             <span className={`health-dot health-${p.health}`} />
@@ -121,6 +128,14 @@ export function Shell() {
         </div>
       </aside>
       <main className="main">
+        <button
+          type="button"
+          className="sidebar-toggle"
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Ouvrir le menu"
+        >
+          <MenuIcon />
+        </button>
         <Outlet />
       </main>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
