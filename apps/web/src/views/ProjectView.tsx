@@ -54,6 +54,7 @@ export function ProjectView() {
   const deleteTask = useStore((s) => s.deleteTask);
   const [zoom, setZoom] = useState(1);
   const [showVariance, setShowVariance] = useState(false);
+  const [hintSeen, setHintSeen] = useState(() => localStorage.getItem("atelier-hint-seen") === "1");
 
   const gridBodyRef = useRef<HTMLDivElement>(null);
   const ganttHeadRef = useRef<HTMLDivElement>(null);
@@ -410,10 +411,24 @@ export function ProjectView() {
         )}
       </div>
 
-      <div className="project-hint">
-        Double-clic sur nom, durée ou % pour éditer : le planning recalcule aussitôt. Rouge = chemin
-        critique.
-      </div>
+      {!hintSeen && (
+        <div className="project-hint">
+          <span>
+            Double-clic sur nom, durée ou % pour éditer : le planning recalcule aussitôt. Rouge = chemin
+            critique.
+          </span>
+          <button
+            className="hint-close"
+            onClick={() => {
+              localStorage.setItem("atelier-hint-seen", "1");
+              setHintSeen(true);
+            }}
+            aria-label="Fermer le conseil"
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </>
   );
 }

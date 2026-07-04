@@ -128,6 +128,15 @@ export function DownloadIcon() {
   );
 }
 
+export function SearchIcon() {
+  return (
+    <svg {...base}>
+      <circle cx="7" cy="7" r="4.3" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M10.2 10.2 13 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function DocIcon() {
   return (
     <svg {...base}>

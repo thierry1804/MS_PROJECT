@@ -354,12 +354,33 @@
 }
 
 .project-hint {
-  padding: 8px 32px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px 8px 32px;
   border-top: 1px solid var(--paper-2);
   font-size: var(--fs-xs);
   color: var(--ink-2);
   flex-shrink: 0;
   background: var(--paper-1);
+}
+
+.hint-close {
+  margin-left: auto;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--ink-2);
+  font-size: 11px;
+}
+
+.hint-close:hover {
+  background: var(--paper-2);
+  color: var(--ink-0);
 }
 
 /* ---------- Toolbar ----------

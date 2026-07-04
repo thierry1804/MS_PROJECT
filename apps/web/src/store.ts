@@ -76,6 +76,8 @@ interface AppState {
   outdentTask: (projectId: string, taskId: string) => void;
   /** Delete a task and its whole subtree, plus any dependency touching them. */
   deleteTask: (projectId: string, taskId: string) => void;
+  /** Retry a failed autosave with the current in-memory portfolio. */
+  retrySync: () => void;
 }
 
 function slugId(code: string): string {
@@ -508,6 +510,10 @@ export const useStore = create<AppState>()((set, get) => ({
         },
       };
     }),
+
+  retrySync: () => {
+    void persistNow(get().portfolio);
+  },
 }));
 
 /* ------------------------------------------------------------------ */
