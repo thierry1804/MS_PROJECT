@@ -196,3 +196,24 @@
   color: var(--ink-1);
   line-height: 1.5;
 }
+
+.gate-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 4px 6px;
+}
+
+.gate-check {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: var(--fs-sm);
+  color: var(--ink-1);
+}
+
+.gate-check input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+}

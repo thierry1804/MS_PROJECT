@@ -20,6 +20,7 @@ export const NAV_ITEMS: { to: string; end?: boolean; label: string }[] = [
   { to: "/ressources", label: "Charge ressources" },
   { to: "/temps", label: "Feuilles de temps" },
   { to: "/raid", label: "Registre RAID" },
+  { to: "/journal", label: "Journal d'activité" },
   { to: "/parametres", label: "Paramètres" },
 ];
 

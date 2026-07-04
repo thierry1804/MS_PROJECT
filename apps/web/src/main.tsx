@@ -5,6 +5,7 @@ import "@fontsource-variable/inter";
 import "./styles/tokens.css";
 import "./styles/base.css";
 import { Shell } from "./Shell";
+import { AuditLogView } from "./views/AuditLogView";
 import { DashboardView } from "./views/DashboardView";
 import { DemandView } from "./views/DemandView";
 import { ProjectView } from "./views/ProjectView";
@@ -25,6 +26,7 @@ const router = createHashRouter([
       { path: "/ressources", element: <ResourcesView /> },
       { path: "/temps", element: <TimesheetView /> },
       { path: "/raid", element: <RaidView /> },
+      { path: "/journal", element: <AuditLogView /> },
       { path: "/parametres", element: <SettingsView /> },
     ],
   },

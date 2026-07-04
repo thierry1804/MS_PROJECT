@@ -23,3 +23,40 @@ export async function savePortfolio(portfolio: Portfolio): Promise<void> {
   });
   if (!res.ok) throw new Error(`PUT /api/portfolio → ${res.status}`);
 }
+
+export interface AuditEntry {
+  id: string;
+  /** ISO datetime. */
+  at: string;
+  actor: string;
+  entityType: string;
+  entityId: string;
+  action: string;
+  summary: string;
+  detail?: unknown;
+}
+
+export async function fetchAuditLog(limit = 300): Promise<AuditEntry[]> {
+  const res = await fetch(`/api/audit?limit=${limit}`);
+  if (!res.ok) throw new Error(`GET /api/audit → ${res.status}`);
+  return (await res.json()) as AuditEntry[];
+}
+
+/** Best-effort: an audit entry that fails to save must never block the actual edit. */
+export async function logAudit(entry: {
+  entityType: string;
+  entityId: string;
+  action: string;
+  summary: string;
+  detail?: unknown;
+}): Promise<void> {
+  try {
+    await fetch("/api/audit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(entry),
+    });
+  } catch {
+    // ignore — audit logging is not allowed to break the user's edit
+  }
+}

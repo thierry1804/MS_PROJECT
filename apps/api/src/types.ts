@@ -47,6 +47,14 @@ export interface WireTimeEntry {
   days: number;
 }
 
+export interface WireGateRecord {
+  stage: string;
+  approver: string;
+  comment?: string;
+  criteria: string[];
+  at: string;
+}
+
 export interface WireDemand {
   id: string;
   title: string;
@@ -58,6 +66,18 @@ export interface WireDemand {
   stage: string;
   createdAt: string;
   convertedProjectId?: string;
+  gateHistory?: WireGateRecord[];
+}
+
+export interface WireAuditEntry {
+  id: string;
+  at: string;
+  actor: string;
+  entityType: string;
+  entityId: string;
+  action: string;
+  summary: string;
+  detail?: unknown;
 }
 
 export interface WireCustomFieldDef {

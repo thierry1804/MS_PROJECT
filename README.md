@@ -39,9 +39,17 @@ packages/scheduling-engine   # moteur pur TS : CPM, calendriers ouvrés, dépend
 - **Persistance** : API Fastify + Prisma adossée à Neon (Postgres serverless).
   Le store web charge le portefeuille au démarrage et l'autosauvegarde (debounce) à chaque
   modification, avec statut de synchronisation affiché dans le shell.
+- **Stage-gate demandes** : pipeline idée → qualifiée → approuvée, avec une gate à
+  checklist de critères + approbateur nommé + commentaire pour les deux transitions qui
+  comptent (qualifier, approuver) ; la décision reste tracée sur la carte de la demande.
+- **Journal d'activité** : table d'audit append-only (indépendante du cycle de sauvegarde
+  du portefeuille) qui trace créations/suppressions de projets et tâches, changements de
+  budget/coût réel, baselines, nivellements, RAID et transitions de demandes. Pas
+  d'authentification pour l'instant donc pas d'identité vérifiée, juste l'horodatage et le
+  résumé de l'action.
 
 ## Feuille de route (extraits)
 
 Baselines et suivi d'écart, nivellement de ressources, EVM complet (SPI/CPI),
-import/export .mpp (MPXJ), collaboration temps réel, feuilles de temps,
-workflow de gouvernance (stage-gate), champs personnalisés.
+import/export .mpp (MPXJ), collaboration temps réel, feuilles de temps, champs personnalisés,
+authentification et rôles (préalable à une vraie traçabilité « qui »).

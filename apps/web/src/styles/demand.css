@@ -194,6 +194,13 @@
   color: var(--ink-0);
 }
 
+.dm-gate-trace {
+  font-size: 10.5px;
+  color: var(--ok);
+  margin-top: 8px;
+  cursor: help;
+}
+
 .dm-actions {
   display: flex;
   gap: 6px;

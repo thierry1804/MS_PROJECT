@@ -1,6 +1,6 @@
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import type { ConstraintType, DependencyType, ResourceKind, Task } from "@atelier/scheduling-engine";
-import type { WirePortfolio, WireProject } from "./types.js";
+import type { WireGateRecord, WirePortfolio, WireProject } from "./types.js";
 
 const PORTFOLIO_ID = "default";
 
@@ -117,6 +117,7 @@ export async function getPortfolio(prisma: PrismaClient): Promise<WirePortfolio 
       stage: d.stage,
       createdAt: d.createdAt,
       convertedProjectId: d.convertedProjectId ?? undefined,
+      gateHistory: (d.gateHistory as WireGateRecord[] | null) ?? undefined,
     })),
     customFields: customFields.map((f) => ({ id: f.id, name: f.name, type: f.type, options: f.options })),
   };
@@ -244,7 +245,12 @@ export async function replacePortfolio(prisma: PrismaClient, payload: WirePortfo
 
     if (payload.demands.length > 0) {
       await tx.demand.createMany({
-        data: payload.demands.map((d) => ({ ...d, portfolioId: PORTFOLIO_ID, convertedProjectId: d.convertedProjectId ?? null })),
+        data: payload.demands.map((d) => ({
+          ...d,
+          portfolioId: PORTFOLIO_ID,
+          convertedProjectId: d.convertedProjectId ?? null,
+          gateHistory: (d.gateHistory as Prisma.InputJsonValue[] | undefined) ?? undefined,
+        })),
       });
     }
 

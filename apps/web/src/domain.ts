@@ -104,6 +104,31 @@ export const DEMAND_STAGE_LABELS: Record<DemandStage, string> = {
   rejetee: "Rejetées",
 };
 
+/** A recorded stage-gate decision: who approved entering `stage`, and against which checklist. */
+export interface GateRecord {
+  stage: DemandStage;
+  approver: string;
+  comment?: string;
+  criteria: string[];
+  /** ISO date the gate was validated. */
+  at: string;
+}
+
+/** Checklist a gate's approver must confirm before the demand can enter that stage.
+ *  Only stages reached through a formal gate (not rejection/reactivation) have one. */
+export const GATE_CRITERIA: Partial<Record<DemandStage, string[]>> = {
+  qualifiee: [
+    "Sponsor identifié et disponible",
+    "Périmètre et objectif décrits",
+    "Budget estimé renseigné",
+  ],
+  approuvee: [
+    "Valeur et effort évalués et cohérents",
+    "Budget validé par le sponsor",
+    "Aucun risque bloquant identifié à ce stade",
+  ],
+};
+
 /** A project idea flowing through the intake / stage-gate pipeline. */
 export interface Demand {
   id: string;
@@ -119,6 +144,8 @@ export interface Demand {
   createdAt: string;
   /** Set once converted into an active project. */
   convertedProjectId?: string;
+  /** Gate decisions recorded as the demand advanced through the pipeline. */
+  gateHistory?: GateRecord[];
 }
 
 /** Priority score: high value, low effort ranks first (0..25). */

@@ -213,9 +213,28 @@ model Demand {
   stage              String
   createdAt          String    @map("created_at")
   convertedProjectId String?   @map("converted_project_id")
+  /// GateRecord[] — checklist + approver recorded at each stage-gate transition.
+  gateHistory        Json?     @map("gate_history")
 
   @@index([portfolioId])
   @@map("demand")
+}
+
+/// Append-only log of significant portfolio mutations, independent of the
+/// singleton Portfolio row (never touched by its full-replace save cycle).
+/// No auth yet, so `actor` is a free-text placeholder, not a verified identity.
+model AuditEntry {
+  id         String   @id @default(cuid())
+  at         DateTime @default(now())
+  actor      String   @default("—")
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  action     String
+  summary    String
+  detail     Json?
+
+  @@index([at])
+  @@map("audit_entry")
 }
 
 model CustomFieldDef {

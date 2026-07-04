@@ -13,15 +13,49 @@ import type {
   CustomFieldDef,
   Demand,
   DemandStage,
+  GateRecord,
   Portfolio,
   Project,
   ProjectDraft,
   RaidItem,
   RaidKind,
 } from "./domain";
-import { todayISO } from "./domain";
+import { DEMAND_STAGE_LABELS, todayISO } from "./domain";
 import { seedPortfolio } from "./seed";
-import { fetchPortfolio, savePortfolio } from "./sync";
+import { fetchPortfolio, logAudit, savePortfolio } from "./sync";
+
+const RAID_LABELS: Record<RaidKind, string> = {
+  risks: "Risque",
+  actions: "Action",
+  issues: "Problème",
+  decisions: "Décision",
+};
+
+const TASK_FIELD_LABELS: Partial<Record<keyof Task, string>> = {
+  name: "nom",
+  duration: "durée (j)",
+  percentComplete: "avancement (%)",
+  notes: "notes",
+};
+
+/** One-line diff of the fields the grid/inspector actually let users edit. Returns null if nothing tracked changed. */
+function summarizeTaskPatch(before: Task, patch: Partial<Task>): string | null {
+  const parts: string[] = [];
+  for (const key of Object.keys(TASK_FIELD_LABELS) as (keyof typeof TASK_FIELD_LABELS)[]) {
+    if (!(key in patch)) continue;
+    const oldV = before[key];
+    const newV = (patch as Record<string, unknown>)[key];
+    if (oldV === newV) continue;
+    parts.push(`${TASK_FIELD_LABELS[key]} : ${oldV ?? "—"} → ${newV ?? "—"}`);
+  }
+  if ("constraint" in patch) {
+    const fmt = (c?: Task["constraint"]) => (c ? `${c.type}${c.date ? " " + c.date : ""}` : "ASAP");
+    const before_ = fmt(before.constraint);
+    const after_ = fmt(patch.constraint);
+    if (before_ !== after_) parts.push(`contrainte : ${before_} → ${after_}`);
+  }
+  return parts.length ? parts.join(", ") : null;
+}
 
 /** Autosave status, surfaced so the shell can show a small "syncing…" hint. */
 export type SyncStatus = "loading" | "saved" | "saving" | "error" | "offline";
@@ -61,8 +95,8 @@ interface AppState {
   /** Add a new demand to the intake pipeline. */
   addDemand: (demand: Demand) => void;
   updateDemand: (id: string, patch: Partial<Demand>) => void;
-  /** Move a demand to a pipeline stage. */
-  moveDemand: (id: string, stage: DemandStage) => void;
+  /** Move a demand to a pipeline stage. `gate` is set when advancing through a formal stage-gate (records approver + checklist). */
+  moveDemand: (id: string, stage: DemandStage, gate?: { approver: string; comment?: string; criteria: string[] }) => void;
   /** Convert an approved demand into an active project; returns the new project id. */
   convertDemand: (id: string) => string | null;
   /** Define a new task-level custom field. */
@@ -98,7 +132,8 @@ export const useStore = create<AppState>()((set, get) => ({
   toggleCollapse: (taskId) =>
     set((s) => ({ collapsed: { ...s.collapsed, [taskId]: !s.collapsed[taskId] } })),
 
-  updateTask: (projectId, taskId, patch) =>
+  updateTask: (projectId, taskId, patch) => {
+    const before = get().portfolio.projects.find((p) => p.id === projectId)?.tasks.find((t) => t.id === taskId);
     set((s) => ({
       portfolio: {
         ...s.portfolio,
@@ -108,9 +143,16 @@ export const useStore = create<AppState>()((set, get) => ({
             : { ...p, tasks: p.tasks.map((t) => (t.id !== taskId ? t : { ...t, ...patch })) },
         ),
       },
-    })),
+    }));
+    if (before) {
+      const summary = summarizeTaskPatch(before, patch);
+      if (summary) {
+        void logAudit({ entityType: "task", entityId: taskId, action: "update", summary: `Tâche « ${before.name} » : ${summary}` });
+      }
+    }
+  },
 
-  captureBaseline: (projectId) =>
+  captureBaseline: (projectId) => {
     set((s) => {
       const project = s.portfolio.projects.find((p) => p.id === projectId);
       if (!project) return s;
@@ -134,9 +176,15 @@ export const useStore = create<AppState>()((set, get) => ({
           ),
         },
       };
-    }),
+    });
+    const project = get().portfolio.projects.find((p) => p.id === projectId);
+    if (project) {
+      void logAudit({ entityType: "project", entityId: projectId, action: "baseline", summary: `Baseline capturée : ${project.name}` });
+    }
+  },
 
-  updateActualCost: (projectId, taskId, cost) =>
+  updateActualCost: (projectId, taskId, cost) => {
+    const before = get().portfolio.projects.find((p) => p.id === projectId)?.tasks.find((t) => t.id === taskId);
     set((s) => ({
       portfolio: {
         ...s.portfolio,
@@ -146,7 +194,16 @@ export const useStore = create<AppState>()((set, get) => ({
             : { ...p, tasks: p.tasks.map((t) => (t.id !== taskId ? t : { ...t, actualCost: cost })) },
         ),
       },
-    })),
+    }));
+    if (before && (before.actualCost ?? 0) !== cost) {
+      void logAudit({
+        entityType: "task",
+        entityId: taskId,
+        action: "update",
+        summary: `Tâche « ${before.name} » : coût réel ${before.actualCost ?? 0} € → ${cost} €`,
+      });
+    }
+  },
 
   addDependency: (projectId, dep) =>
     set((s) => ({
@@ -181,7 +238,7 @@ export const useStore = create<AppState>()((set, get) => ({
       },
     })),
 
-  addRaidItem: (projectId, kind, item) =>
+  addRaidItem: (projectId, kind, item) => {
     set((s) => ({
       portfolio: {
         ...s.portfolio,
@@ -189,9 +246,18 @@ export const useStore = create<AppState>()((set, get) => ({
           p.id !== projectId ? p : { ...p, [kind]: [...(p[kind] as RaidItem[]), item] },
         ),
       },
-    })),
+    }));
+    void logAudit({
+      entityType: kind,
+      entityId: item.id,
+      action: "create",
+      summary: `${RAID_LABELS[kind]} ajouté(e) : ${(item as { label: string }).label}`,
+    });
+  },
 
-  updateRaidItem: (projectId, kind, id, patch) =>
+  updateRaidItem: (projectId, kind, id, patch) => {
+    const beforeProject = get().portfolio.projects.find((p) => p.id === projectId);
+    const before = beforeProject ? (beforeProject[kind] as RaidItem[]).find((it) => it.id === id) : undefined;
     set((s) => ({
       portfolio: {
         ...s.portfolio,
@@ -204,9 +270,26 @@ export const useStore = create<AppState>()((set, get) => ({
               },
         ),
       },
-    })),
+    }));
+    if (before) {
+      const patchRec = patch as Record<string, unknown>;
+      const beforeRec = before as unknown as Record<string, unknown>;
+      const statusNote =
+        "status" in patchRec && patchRec.status !== beforeRec.status
+          ? ` (statut : ${beforeRec.status} → ${patchRec.status})`
+          : "";
+      void logAudit({
+        entityType: kind,
+        entityId: id,
+        action: "update",
+        summary: `${RAID_LABELS[kind]} modifié(e) : ${before.label}${statusNote}`,
+      });
+    }
+  },
 
-  removeRaidItem: (projectId, kind, id) =>
+  removeRaidItem: (projectId, kind, id) => {
+    const beforeProject = get().portfolio.projects.find((p) => p.id === projectId);
+    const before = beforeProject ? (beforeProject[kind] as RaidItem[]).find((it) => it.id === id) : undefined;
     set((s) => ({
       portfolio: {
         ...s.portfolio,
@@ -216,7 +299,16 @@ export const useStore = create<AppState>()((set, get) => ({
             : { ...p, [kind]: (p[kind] as RaidItem[]).filter((it) => it.id !== id) },
         ),
       },
-    })),
+    }));
+    if (before) {
+      void logAudit({
+        entityType: kind,
+        entityId: id,
+        action: "delete",
+        summary: `${RAID_LABELS[kind]} supprimé(e) : ${before.label}`,
+      });
+    }
+  },
 
   logTime: (projectId, taskId, resourceId, weekStart, days) =>
     set((s) => {
@@ -249,31 +341,36 @@ export const useStore = create<AppState>()((set, get) => ({
       };
     }),
 
-  applyLeveling: (projectId) =>
-    set((s) => {
-      const project = s.portfolio.projects.find((p) => p.id === projectId);
-      if (!project) return s;
-      const sched = scheduleOf(project, s.portfolio);
-      const proposals = levelResources(
-        project.tasks,
-        sched,
-        s.portfolio.resources,
-        s.portfolio.calendar,
-        project.projectStart,
-      );
-      if (proposals.length === 0) return s;
-      const byId = new Map(proposals.map((p) => [p.taskId, p]));
-      const tasks = project.tasks.map((t) => {
-        const p = byId.get(t.id);
-        return p ? { ...t, constraint: { type: "SNET" as const, date: p.notBefore } } : t;
-      });
-      return {
-        portfolio: {
-          ...s.portfolio,
-          projects: s.portfolio.projects.map((pp) => (pp.id !== projectId ? pp : { ...pp, tasks })),
-        },
-      };
-    }),
+  applyLeveling: (projectId) => {
+    const project = get().portfolio.projects.find((p) => p.id === projectId);
+    if (!project) return;
+    const sched = scheduleOf(project, get().portfolio);
+    const proposals = levelResources(project.tasks, sched, get().portfolio.resources, get().portfolio.calendar, project.projectStart);
+    if (proposals.length === 0) return;
+    const byId = new Map(proposals.map((p) => [p.taskId, p]));
+    set((s) => ({
+      portfolio: {
+        ...s.portfolio,
+        projects: s.portfolio.projects.map((pp) =>
+          pp.id !== projectId
+            ? pp
+            : {
+                ...pp,
+                tasks: pp.tasks.map((t) => {
+                  const p = byId.get(t.id);
+                  return p ? { ...t, constraint: { type: "SNET" as const, date: p.notBefore } } : t;
+                }),
+              },
+        ),
+      },
+    }));
+    void logAudit({
+      entityType: "project",
+      entityId: projectId,
+      action: "level",
+      summary: `Nivellement appliqué : ${project.name} (${proposals.length} tâche${proposals.length > 1 ? "s" : ""})`,
+    });
+  },
 
   createProject: (draft) => {
     const id = slugId(draft.code);
@@ -295,18 +392,27 @@ export const useStore = create<AppState>()((set, get) => ({
       decisions: [],
     };
     set((s) => ({ portfolio: { ...s.portfolio, projects: [...s.portfolio.projects, project] } }));
+    void logAudit({ entityType: "project", entityId: id, action: "create", summary: `Projet créé : ${project.name} (${project.code})` });
     return id;
   },
 
-  resetPortfolio: () => set({ portfolio: structuredClone(seedPortfolio), selectedTaskId: null, collapsed: {} }),
+  resetPortfolio: () => {
+    set({ portfolio: structuredClone(seedPortfolio), selectedTaskId: null, collapsed: {} });
+    void logAudit({ entityType: "portfolio", entityId: "default", action: "reset", summary: "Portefeuille réinitialisé aux données de démonstration" });
+  },
 
-  deleteProject: (projectId) =>
+  deleteProject: (projectId) => {
+    const project = get().portfolio.projects.find((p) => p.id === projectId);
     set((s) => ({
       portfolio: {
         ...s.portfolio,
         projects: s.portfolio.projects.filter((p) => p.id !== projectId),
       },
-    })),
+    }));
+    if (project) {
+      void logAudit({ entityType: "project", entityId: projectId, action: "delete", summary: `Projet supprimé : ${project.name} (${project.code})` });
+    }
+  },
 
   addDemand: (demand) =>
     set((s) => ({ portfolio: { ...s.portfolio, demands: [...(s.portfolio.demands ?? []), demand] } })),
@@ -319,13 +425,31 @@ export const useStore = create<AppState>()((set, get) => ({
       },
     })),
 
-  moveDemand: (id, stage) =>
+  moveDemand: (id, stage, gate) => {
+    const before = get().portfolio.demands?.find((d) => d.id === id);
+    const gateRecord: GateRecord | undefined = gate
+      ? { stage, approver: gate.approver, comment: gate.comment, criteria: gate.criteria, at: todayISO() }
+      : undefined;
     set((s) => ({
       portfolio: {
         ...s.portfolio,
-        demands: (s.portfolio.demands ?? []).map((d) => (d.id !== id ? d : { ...d, stage })),
+        demands: (s.portfolio.demands ?? []).map((d) =>
+          d.id !== id
+            ? d
+            : { ...d, stage, gateHistory: gateRecord ? [...(d.gateHistory ?? []), gateRecord] : d.gateHistory },
+        ),
       },
-    })),
+    }));
+    if (before) {
+      const approverNote = gate ? ` (approuvé par ${gate.approver})` : "";
+      void logAudit({
+        entityType: "demand",
+        entityId: id,
+        action: "stage",
+        summary: `Demande « ${before.title} » : ${DEMAND_STAGE_LABELS[before.stage]} → ${DEMAND_STAGE_LABELS[stage]}${approverNote}`,
+      });
+    }
+  },
 
   convertDemand: (id) => {
     const demand = get().portfolio.demands?.find((d) => d.id === id);
@@ -357,6 +481,12 @@ export const useStore = create<AppState>()((set, get) => ({
         ),
       },
     }));
+    void logAudit({
+      entityType: "demand",
+      entityId: id,
+      action: "convert",
+      summary: `Demande « ${demand.title} » convertie en projet ${project.code}`,
+    });
     return projectId;
   },
 
@@ -486,40 +616,49 @@ export const useStore = create<AppState>()((set, get) => ({
       };
     }),
 
-  deleteTask: (projectId, taskId) =>
-    set((s) => {
-      const project = s.portfolio.projects.find((p) => p.id === projectId);
-      if (!project) return s;
-      // Collect the task and all its descendants.
-      const doomed = new Set<string>([taskId]);
-      let grew = true;
-      while (grew) {
-        grew = false;
-        for (const t of project.tasks) {
-          if (t.parentId && doomed.has(t.parentId) && !doomed.has(t.id)) {
-            doomed.add(t.id);
-            grew = true;
-          }
+  deleteTask: (projectId, taskId) => {
+    const project = get().portfolio.projects.find((p) => p.id === projectId);
+    if (!project) return;
+    const task = project.tasks.find((t) => t.id === taskId);
+    // Collect the task and all its descendants.
+    const doomed = new Set<string>([taskId]);
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const t of project.tasks) {
+        if (t.parentId && doomed.has(t.parentId) && !doomed.has(t.id)) {
+          doomed.add(t.id);
+          grew = true;
         }
       }
-      return {
-        selectedTaskId: doomed.has(s.selectedTaskId ?? "") ? null : s.selectedTaskId,
-        portfolio: {
-          ...s.portfolio,
-          projects: s.portfolio.projects.map((p) =>
-            p.id !== projectId
-              ? p
-              : {
-                  ...p,
-                  tasks: p.tasks.filter((t) => !doomed.has(t.id)),
-                  dependencies: p.dependencies.filter(
-                    (d) => !doomed.has(d.predecessorId) && !doomed.has(d.successorId),
-                  ),
-                },
-          ),
-        },
-      };
-    }),
+    }
+    set((s) => ({
+      selectedTaskId: doomed.has(s.selectedTaskId ?? "") ? null : s.selectedTaskId,
+      portfolio: {
+        ...s.portfolio,
+        projects: s.portfolio.projects.map((p) =>
+          p.id !== projectId
+            ? p
+            : {
+                ...p,
+                tasks: p.tasks.filter((t) => !doomed.has(t.id)),
+                dependencies: p.dependencies.filter(
+                  (d) => !doomed.has(d.predecessorId) && !doomed.has(d.successorId),
+                ),
+              },
+        ),
+      },
+    }));
+    if (task) {
+      const extra = doomed.size - 1;
+      void logAudit({
+        entityType: "task",
+        entityId: taskId,
+        action: "delete",
+        summary: `Tâche supprimée : « ${task.name} »${extra > 0 ? ` (+${extra} sous-tâche${extra > 1 ? "s" : ""})` : ""}`,
+      });
+    }
+  },
 
   retrySync: () => {
     void persistNow(get().portfolio);

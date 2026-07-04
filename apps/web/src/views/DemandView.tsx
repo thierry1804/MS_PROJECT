@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { GateDialog } from "../components/GateDialog";
 import {
   DEMAND_STAGES,
   DEMAND_STAGE_LABELS,
+  GATE_CRITERIA,
   demandPriority,
+  fmtDate,
   EUR,
   todayISO,
   type Demand,
@@ -11,6 +14,11 @@ import {
 } from "../domain";
 import { useStore } from "../store";
 import "../styles/demand.css";
+
+interface GateTarget {
+  demandId: string;
+  stage: DemandStage;
+}
 
 function uid() {
   return `dm-${Math.random().toString(36).slice(2, 8)}`;
@@ -34,6 +42,7 @@ export function DemandView() {
     demands.filter((d) => d.stage === stage).sort((a, b) => demandPriority(b) - demandPriority(a));
 
   const [showForm, setShowForm] = useState(false);
+  const [gateTarget, setGateTarget] = useState<GateTarget | null>(null);
 
   const totalPipeline = demands
     .filter((d) => d.stage !== "rejetee")
@@ -70,6 +79,7 @@ export function DemandView() {
                     key={d.id}
                     demand={d}
                     onMove={(s) => moveDemand(d.id, s)}
+                    onGate={(s) => setGateTarget({ demandId: d.id, stage: s })}
                     onConvert={() => {
                       const id = convertDemand(d.id);
                       if (id) navigate(`/projets/${id}`);
@@ -83,6 +93,18 @@ export function DemandView() {
           );
         })}
       </div>
+
+      {gateTarget && (
+        <GateDialog
+          title={gateTarget.stage === "qualifiee" ? "Qualifier la demande" : "Approuver la demande"}
+          criteria={GATE_CRITERIA[gateTarget.stage] ?? []}
+          onCancel={() => setGateTarget(null)}
+          onConfirm={(info) => {
+            moveDemand(gateTarget.demandId, gateTarget.stage, info);
+            setGateTarget(null);
+          }}
+        />
+      )}
     </>
   );
 }
@@ -90,15 +112,18 @@ export function DemandView() {
 function DemandCard({
   demand,
   onMove,
+  onGate,
   onConvert,
   onOpen,
 }: {
   demand: Demand;
   onMove: (stage: DemandStage) => void;
+  onGate: (stage: DemandStage) => void;
   onConvert: () => void;
   onOpen?: () => void;
 }) {
   const p = demandPriority(demand);
+  const lastGate = demand.gateHistory?.[demand.gateHistory.length - 1];
   return (
     <div className="dm-card">
       <div className="dm-card-top">
@@ -116,16 +141,21 @@ function DemandCard({
         <span className="dm-score">Valeur <b>{demand.value}</b>/5</span>
         <span className="dm-score">Effort <b>{demand.effort}</b>/5</span>
       </div>
+      {lastGate && (
+        <div className="dm-gate-trace" title={lastGate.comment}>
+          ✓ {DEMAND_STAGE_LABELS[lastGate.stage]} par {lastGate.approver} le {fmtDate(lastGate.at, true)}
+        </div>
+      )}
       <div className="dm-actions">
         {demand.stage === "idee" && (
           <>
-            <button className="dm-btn go" onClick={() => onMove("qualifiee")}>Qualifier ›</button>
+            <button className="dm-btn go" onClick={() => onGate("qualifiee")}>Qualifier ›</button>
             <button className="dm-btn no" onClick={() => onMove("rejetee")}>Rejeter</button>
           </>
         )}
         {demand.stage === "qualifiee" && (
           <>
-            <button className="dm-btn go" onClick={() => onMove("approuvee")}>Approuver ›</button>
+            <button className="dm-btn go" onClick={() => onGate("approuvee")}>Approuver ›</button>
             <button className="dm-btn back" onClick={() => onMove("idee")}>‹</button>
             <button className="dm-btn no" onClick={() => onMove("rejetee")}>Rejeter</button>
           </>
