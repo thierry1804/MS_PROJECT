@@ -90,12 +90,16 @@ select {
 
 .sync-status {
   margin-top: auto;
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 8px 10px 2px;
+  padding: 8px 10px 8px;
   font-size: var(--fs-xs);
   color: var(--ink-2);
+  background: var(--paper-1);
   border-top: 1px solid var(--paper-2);
 }
 
@@ -180,6 +184,23 @@ select {
   font-size: var(--fs-xs);
   color: var(--ink-0);
   width: 100%;
+}
+
+.sidebar-kbd {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--ink-2);
+  background: var(--paper-2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  transition: background 150ms var(--ease-out), color 150ms var(--ease-out);
+}
+
+.sidebar-kbd:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .sidebar-empty {

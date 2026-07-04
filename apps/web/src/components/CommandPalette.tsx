@@ -65,6 +65,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       e.preventDefault();
       const entry = filtered[activeIndex];
       if (entry) select(entry);
+    } else if (e.key === "Tab") {
+      // Single-input dialog: keep focus here instead of leaking to the sidebar behind it.
+      e.preventDefault();
     }
   }
 
@@ -84,14 +87,21 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={onKeyDown}
-          placeholder="Aller à une vue ou un projet…"
+          placeholder="Aller à…"
           aria-label="Rechercher"
+          role="combobox"
+          aria-expanded
+          aria-controls="palette-listbox"
+          aria-activedescendant={filtered[activeIndex] ? `palette-opt-${filtered[activeIndex].key}` : undefined}
         />
-        <div className="palette-list">
+        <div className="palette-list" id="palette-listbox" role="listbox">
           {filtered.length === 0 && <div className="palette-empty">Aucun résultat.</div>}
           {filtered.map((entry, i) => (
             <div
               key={entry.key}
+              id={`palette-opt-${entry.key}`}
+              role="option"
+              aria-selected={i === activeIndex}
               className={`palette-item${i === activeIndex ? " active" : ""}`}
               onMouseEnter={() => setActiveIndex(i)}
               onClick={() => select(entry)}

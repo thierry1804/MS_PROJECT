@@ -25,6 +25,8 @@ export const NAV_ITEMS: { to: string; end?: boolean; label: string }[] = [
 
 const HEALTH_RANK: Record<Health, number> = { red: 0, amber: 1, green: 2 };
 
+const KBD_HINT = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘K" : "Ctrl K";
+
 export function Shell() {
   const projects = useStore((s) => s.portfolio.projects);
   const syncStatus = useStore((s) => s.syncStatus);
@@ -83,6 +85,15 @@ export function Shell() {
               placeholder="Filtrer les projets…"
               aria-label="Filtrer les projets"
             />
+            <button
+              type="button"
+              className="sidebar-kbd"
+              onClick={() => setPaletteOpen(true)}
+              title="Aller à une vue ou un projet"
+              aria-label="Ouvrir la palette de commandes"
+            >
+              {KBD_HINT}
+            </button>
           </label>
         </div>
         {filteredProjects.map((p) => (
