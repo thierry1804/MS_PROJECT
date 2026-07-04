@@ -147,8 +147,14 @@ export function DashboardView() {
   }, [portfolio]);
 
   /* Roadmap */
-  const minStart = rows.reduce((m, r) => (r.project.projectStart < m ? r.project.projectStart : m), rows[0]!.project.projectStart);
-  const maxFinish = rows.reduce((m, r) => (r.schedule.projectFinishDate > m ? r.schedule.projectFinishDate : m), rows[0]!.schedule.projectFinishDate);
+  const minStart =
+    rows.length > 0
+      ? rows.reduce((m, r) => (r.project.projectStart < m ? r.project.projectStart : m), rows[0]!.project.projectStart)
+      : today;
+  const maxFinish =
+    rows.length > 0
+      ? rows.reduce((m, r) => (r.schedule.projectFinishDate > m ? r.schedule.projectFinishDate : m), rows[0]!.schedule.projectFinishDate)
+      : today;
   const range = buildRange(minStart, maxFinish);
   const RM_DW = 2.6;
   const rmWidth = range.days * RM_DW;
