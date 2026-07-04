@@ -65,6 +65,31 @@
   font-weight: 500;
 }
 
+.row-delete {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  color: var(--ink-3);
+  opacity: 0;
+  transition: opacity 150ms var(--ease-out), background 150ms var(--ease-out), color 150ms var(--ease-out);
+}
+
+.data-table tbody tr:hover .row-delete {
+  opacity: 1;
+}
+
+.row-delete:hover {
+  background: var(--critical-soft);
+  color: var(--critical);
+}
+
+.row-delete:focus-visible {
+  opacity: 1;
+}
+
 .code-cell {
   font-size: var(--fs-xs);
   font-weight: 600;

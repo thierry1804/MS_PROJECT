@@ -1,7 +1,9 @@
 import { Fragment, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { HealthBadge, ProgressBar, StatusBadge } from "../components/badges";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { NewProjectModal } from "../components/NewProjectModal";
+import { TrashIcon } from "../components/icons";
 import { EUR, fmtDate, todayISO, type Project, type Risk } from "../domain";
 import { downloadJson } from "../export";
 import { buildRange, dayOffset, monthBands } from "../gantt-utils";
@@ -23,9 +25,12 @@ export function DashboardView() {
   const portfolio = useStore((s) => s.portfolio);
   const createProject = useStore((s) => s.createProject);
   const resetPortfolio = useStore((s) => s.resetPortfolio);
+  const deleteProject = useStore((s) => s.deleteProject);
   const navigate = useNavigate();
   const today = todayISO();
   const [showNew, setShowNew] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
 
   const rows = portfolio.projects.map((p) => ({
     project: p,
@@ -109,9 +114,7 @@ export function DashboardView() {
         <div className="dash-actions">
           <button
             className="toolbar-btn"
-            onClick={() => {
-              if (confirm("Réinitialiser le portefeuille ? Toutes les modifications locales seront perdues.")) resetPortfolio();
-            }}
+            onClick={() => setConfirmReset(true)}
             title="Restaurer les données de démonstration"
           >
             Réinitialiser
@@ -136,6 +139,34 @@ export function DashboardView() {
         />
       )}
 
+      {confirmReset && (
+        <ConfirmDialog
+          title="Réinitialiser le portefeuille ?"
+          message="Toutes les modifications locales seront perdues et remplacées par les données de démonstration."
+          confirmLabel="Réinitialiser"
+          danger
+          onCancel={() => setConfirmReset(false)}
+          onConfirm={() => {
+            resetPortfolio();
+            setConfirmReset(false);
+          }}
+        />
+      )}
+
+      {deleteTarget && (
+        <ConfirmDialog
+          title="Supprimer ce projet ?"
+          message={`« ${deleteTarget.name} » (${deleteTarget.code}) sera définitivement supprimé, avec toutes ses tâches, dépendances et registres RAID.`}
+          confirmLabel="Supprimer"
+          danger
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={() => {
+            deleteProject(deleteTarget.id);
+            setDeleteTarget(null);
+          }}
+        />
+      )}
+
       <div className="view-body dashboard">
         <section className="dash-projects">
           <table className="data-table">
@@ -154,6 +185,7 @@ export function DashboardView() {
                 <th className="num">ICP</th>
                 <th className="num">Critiques</th>
                 <th className="num">Risques</th>
+                <th style={{ width: 36 }} />
               </tr>
             </thead>
             <tbody>
@@ -187,6 +219,19 @@ export function DashboardView() {
                     <td className={`num ${evmCls(metrics.cpi)}`}>{metrics.cpi.toFixed(2)}</td>
                     <td className="num">{metrics.criticalCount}</td>
                     <td className="num">{openRisks}</td>
+                    <td>
+                      <button
+                        className="row-delete"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteTarget(project);
+                        }}
+                        title="Supprimer le projet"
+                        aria-label={`Supprimer le projet ${project.name}`}
+                      >
+                        <TrashIcon />
+                      </button>
+                    </td>
                   </tr>
                 );
               })}

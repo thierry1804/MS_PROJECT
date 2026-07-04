@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { detectOverallocations } from "@atelier/scheduling-engine";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Gantt, GanttHeader } from "../components/Gantt";
 import { TaskGrid } from "../components/TaskGrid";
 import { TaskInspector } from "../components/TaskInspector";
@@ -55,6 +56,7 @@ export function ProjectView() {
   const [zoom, setZoom] = useState(1);
   const [showVariance, setShowVariance] = useState(false);
   const [hintSeen, setHintSeen] = useState(() => localStorage.getItem("atelier-hint-seen") === "1");
+  const [confirmDeleteTask, setConfirmDeleteTask] = useState(false);
 
   const gridBodyRef = useRef<HTMLDivElement>(null);
   const ganttHeadRef = useRef<HTMLDivElement>(null);
@@ -160,9 +162,7 @@ export function ProjectView() {
                 </div>
                 <button
                   className="tb-icon tb-danger"
-                  onClick={() => {
-                    if (confirm("Supprimer cette tâche et ses sous-tâches ?")) deleteTask(project.id, selectedTaskId);
-                  }}
+                  onClick={() => setConfirmDeleteTask(true)}
                   title="Supprimer la tâche et son sous-arbre"
                   aria-label="Supprimer la tâche"
                 >
@@ -410,6 +410,20 @@ export function ProjectView() {
           />
         )}
       </div>
+
+      {confirmDeleteTask && selectedTaskId && (
+        <ConfirmDialog
+          title="Supprimer cette tâche ?"
+          message={`« ${selectedTask?.name} » et toutes ses sous-tâches seront supprimées, ainsi que leurs dépendances.`}
+          confirmLabel="Supprimer"
+          danger
+          onCancel={() => setConfirmDeleteTask(false)}
+          onConfirm={() => {
+            deleteTask(project.id, selectedTaskId);
+            setConfirmDeleteTask(false);
+          }}
+        />
+      )}
 
       {!hintSeen && (
         <div className="project-hint">

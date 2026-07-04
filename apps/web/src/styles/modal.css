@@ -178,3 +178,21 @@
   color: var(--ink-3);
   cursor: not-allowed;
 }
+
+.modal-btn.danger {
+  background: var(--critical);
+  color: var(--paper-0);
+}
+.modal-btn.danger:hover {
+  background: oklch(0.48 0.19 30);
+}
+
+.modal.confirm {
+  max-width: 400px;
+}
+
+.confirm-message {
+  font-size: var(--fs-sm);
+  color: var(--ink-1);
+  line-height: 1.5;
+}

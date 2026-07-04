@@ -56,6 +56,8 @@ interface AppState {
   createProject: (draft: ProjectDraft) => string;
   /** Discard all local edits and restore the seed portfolio. */
   resetPortfolio: () => void;
+  /** Remove a project entirely from the portfolio. */
+  deleteProject: (projectId: string) => void;
   /** Add a new demand to the intake pipeline. */
   addDemand: (demand: Demand) => void;
   updateDemand: (id: string, patch: Partial<Demand>) => void;
@@ -297,6 +299,14 @@ export const useStore = create<AppState>()((set, get) => ({
   },
 
   resetPortfolio: () => set({ portfolio: structuredClone(seedPortfolio), selectedTaskId: null, collapsed: {} }),
+
+  deleteProject: (projectId) =>
+    set((s) => ({
+      portfolio: {
+        ...s.portfolio,
+        projects: s.portfolio.projects.filter((p) => p.id !== projectId),
+      },
+    })),
 
   addDemand: (demand) =>
     set((s) => ({ portfolio: { ...s.portfolio, demands: [...(s.portfolio.demands ?? []), demand] } })),
