@@ -37,6 +37,10 @@ export interface Issue {
   /** 1..5, gravité. */
   severity: number;
   status: IssueStatus;
+  /** ISO date de création, pour le time-to-resolution. */
+  createdAt: string;
+  /** ISO date de résolution ; absent tant que status !== "resolu". */
+  resolvedAt?: string;
 }
 
 export interface Decision {
@@ -91,6 +95,8 @@ export interface Project {
   custom?: Record<string, string | number>;
   /** ISO date when the baseline was last captured. */
   baselineCapturedAt?: string;
+  /** Axe stratégique groupe auquel le projet est rattaché (KPI d'alignement). */
+  strategicAxis?: string;
 }
 
 export type DemandStage = "idee" | "qualifiee" | "approuvee" | "rejetee";
@@ -164,6 +170,48 @@ export interface CustomFieldDef {
   options?: string[];
 }
 
+/** Type de rituel de gouvernance PMO suivi (comités, revues). */
+export type GovernanceEventType = "comite-portefeuille" | "revue-projet" | "comite-architecture" | "comite-conformite";
+
+export const GOVERNANCE_TYPE_LABELS: Record<GovernanceEventType, string> = {
+  "comite-portefeuille": "Comité de portefeuille",
+  "revue-projet": "Revue de projet",
+  "comite-architecture": "Comité d'architecture",
+  "comite-conformite": "Comité de conformité",
+};
+
+/** One governance ritual instance, used to measure participation to comités/revues. */
+export interface GovernanceEvent {
+  id: string;
+  type: GovernanceEventType;
+  label: string;
+  /** ISO date. */
+  date: string;
+  /** Participants attendus. */
+  expected: number;
+  /** Participants effectivement présents. */
+  attendees: number;
+}
+
+export type SurveyRole = "chef-projet" | "sponsor" | "equipe";
+
+export const SURVEY_ROLE_LABELS: Record<SurveyRole, string> = {
+  "chef-projet": "Chef de projet",
+  sponsor: "Sponsor",
+  equipe: "Équipe projet",
+};
+
+/** One internal-NPS style satisfaction response about the PMO. */
+export interface SurveyResponse {
+  id: string;
+  /** ISO date. */
+  date: string;
+  role: SurveyRole;
+  /** 0..10, "recommanderiez-vous le PMO à un pair ?" */
+  score: number;
+  comment?: string;
+}
+
 export interface Portfolio {
   name: string;
   calendar: CalendarDef;
@@ -173,6 +221,10 @@ export interface Portfolio {
   demands?: Demand[];
   /** Définitions de champs personnalisés au niveau tâche. */
   customFields?: CustomFieldDef[];
+  /** Journal des rituels de gouvernance (comités, revues) — KPI de participation. */
+  governanceEvents?: GovernanceEvent[];
+  /** Réponses au baromètre de satisfaction interne — KPI NPS. */
+  surveys?: SurveyResponse[];
 }
 
 /** Fields captured when a new project is created from the intake form. */

@@ -14,6 +14,8 @@ export async function savePortfolio(portfolio: Portfolio): Promise<void> {
     ...portfolio,
     demands: portfolio.demands ?? [],
     customFields: portfolio.customFields ?? [],
+    governanceEvents: portfolio.governanceEvents ?? [],
+    surveys: portfolio.surveys ?? [],
     projects: portfolio.projects.map((p) => ({ ...p, timesheets: p.timesheets ?? [] })),
   };
   const res = await fetch("/api/portfolio", {

@@ -261,9 +261,11 @@ export function RaidView() {
                     <button
                       className={`raid-status ${item.status === "ouvert" ? "open" : "closed"}`}
                       onClick={() =>
-                        updateRaidItem(project.id, "issues", item.id, {
-                          status: item.status === "ouvert" ? "resolu" : "ouvert",
-                        })
+                        updateRaidItem(project.id, "issues", item.id,
+                          item.status === "ouvert"
+                            ? { status: "resolu", resolvedAt: today }
+                            : { status: "ouvert", resolvedAt: undefined },
+                        )
                       }
                     >
                       {item.status === "ouvert" ? "Ouvert" : "Résolu"}
@@ -423,7 +425,14 @@ function AddIssue({ onAdd }: { onAdd: (i: Issue) => void }) {
   const [sev, setSev] = useState(3);
   function submit() {
     if (!label.trim()) return;
-    onAdd({ id: uid("iss"), label: label.trim(), owner: owner.trim() || "PMO", severity: sev, status: "ouvert" });
+    onAdd({
+      id: uid("iss"),
+      label: label.trim(),
+      owner: owner.trim() || "PMO",
+      severity: sev,
+      status: "ouvert",
+      createdAt: todayISO(),
+    });
     setLabel("");
     setOwner("");
     setSev(3);

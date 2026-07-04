@@ -14,11 +14,13 @@ import type {
   Demand,
   DemandStage,
   GateRecord,
+  GovernanceEvent,
   Portfolio,
   Project,
   ProjectDraft,
   RaidItem,
   RaidKind,
+  SurveyResponse,
 } from "./domain";
 import { DEMAND_STAGE_LABELS, todayISO } from "./domain";
 import { seedPortfolio } from "./seed";
@@ -99,6 +101,10 @@ interface AppState {
   moveDemand: (id: string, stage: DemandStage, gate?: { approver: string; comment?: string; criteria: string[] }) => void;
   /** Convert an approved demand into an active project; returns the new project id. */
   convertDemand: (id: string) => string | null;
+  /** Log a governance ritual (comité, revue) for the participation KPI. */
+  addGovernanceEvent: (event: GovernanceEvent) => void;
+  /** Log an internal-satisfaction survey response for the NPS KPI. */
+  addSurveyResponse: (response: SurveyResponse) => void;
   /** Define a new task-level custom field. */
   addCustomField: (field: CustomFieldDef) => void;
   removeCustomField: (id: string) => void;
@@ -424,6 +430,28 @@ export const useStore = create<AppState>()((set, get) => ({
         demands: (s.portfolio.demands ?? []).map((d) => (d.id !== id ? d : { ...d, ...patch })),
       },
     })),
+
+  addGovernanceEvent: (event) => {
+    set((s) => ({
+      portfolio: { ...s.portfolio, governanceEvents: [...(s.portfolio.governanceEvents ?? []), event] },
+    }));
+    void logAudit({
+      entityType: "governance",
+      entityId: event.id,
+      action: "create",
+      summary: `Rituel enregistré : ${event.label} (${event.attendees}/${event.expected} présents)`,
+    });
+  },
+
+  addSurveyResponse: (response) => {
+    set((s) => ({ portfolio: { ...s.portfolio, surveys: [...(s.portfolio.surveys ?? []), response] } }));
+    void logAudit({
+      entityType: "survey",
+      entityId: response.id,
+      action: "create",
+      summary: `Réponse baromètre PMO enregistrée (score ${response.score}/10)`,
+    });
+  },
 
   moveDemand: (id, stage, gate) => {
     const before = get().portfolio.demands?.find((d) => d.id === id);

@@ -16,6 +16,7 @@ const SYNC_LABEL: Record<SyncStatus, string> = {
 
 export const NAV_ITEMS: { to: string; end?: boolean; label: string }[] = [
   { to: "/", end: true, label: "Vue portefeuille" },
+  { to: "/kpi", label: "Pilotage PMO" },
   { to: "/demandes", label: "Pipeline demandes" },
   { to: "/ressources", label: "Charge ressources" },
   { to: "/temps", label: "Feuilles de temps" },

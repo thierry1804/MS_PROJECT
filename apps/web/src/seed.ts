@@ -1,5 +1,15 @@
 import type { Assignment, Dependency, DependencyType, Resource, Task } from "@atelier/scheduling-engine";
-import type { Action, Decision, Demand, Issue, Portfolio, Project, Risk } from "./domain";
+import type {
+  Action,
+  Decision,
+  Demand,
+  GovernanceEvent,
+  Issue,
+  Portfolio,
+  Project,
+  Risk,
+  SurveyResponse,
+} from "./domain";
 
 function t(
   id: string,
@@ -41,12 +51,39 @@ const act = (id: string, label: string, owner: string, dueDate: string, status: 
   status,
 });
 
-const iss = (id: string, label: string, owner: string, severity: number, status: Issue["status"] = "ouvert"): Issue => ({
+const iss = (
+  id: string,
+  label: string,
+  owner: string,
+  severity: number,
+  createdAt: string,
+  status: Issue["status"] = "ouvert",
+  resolvedAt?: string,
+): Issue => ({
   id,
   label,
   owner,
   severity,
   status,
+  createdAt,
+  resolvedAt,
+});
+
+const gov = (
+  id: string,
+  type: GovernanceEvent["type"],
+  label: string,
+  date: string,
+  expected: number,
+  attendees: number,
+): GovernanceEvent => ({ id, type, label, date, expected, attendees });
+
+const survey = (id: string, date: string, role: SurveyResponse["role"], score: number, comment?: string): SurveyResponse => ({
+  id,
+  date,
+  role,
+  score,
+  comment,
 });
 
 const dec = (id: string, label: string, decidedBy: string, date: string, rationale?: string): Decision => ({
@@ -80,6 +117,7 @@ const crm: Project = {
   manager: "S. Martin",
   status: "en-cours",
   health: "green",
+  strategicAxis: "Expérience client",
   budget: 420_000,
   projectStart: "2026-04-01",
   tasks: [
@@ -139,7 +177,7 @@ const crm: Project = {
     act("crm-a3", "Valider les maquettes UX avec les key users", "M. N'Diaye", "2026-05-20", "fait"),
   ],
   issues: [
-    iss("crm-i1", "Environnement de recette indisponible depuis 3 jours", "T. Hoarau", 3),
+    iss("crm-i1", "Environnement de recette indisponible depuis 3 jours", "T. Hoarau", 3, "2026-07-01"),
   ],
   decisions: [
     dec("crm-d1", "Retenir la plateforme unifiée plutôt que deux outils séparés", "Comité DSI", "2026-04-10", "Réduction des coûts de licence et d'intégration"),
@@ -158,6 +196,7 @@ const cloud: Project = {
   manager: "T. Hoarau",
   status: "en-cours",
   health: "amber",
+  strategicAxis: "Efficience opérationnelle",
   budget: 610_000,
   projectStart: "2026-04-06",
   tasks: [
@@ -199,8 +238,8 @@ const cloud: Project = {
     act("cld-a3", "Cadrer la vague 1 avec les métiers pilotes", "S. Martin", "2026-05-25", "en-cours"),
   ],
   issues: [
-    iss("cld-i1", "Quota de VM insuffisant chez le fournisseur pour la vague 2", "T. Hoarau", 4),
-    iss("cld-i2", "IAM : rôles hérités incohérents entre applications", "L. Dubois", 3),
+    iss("cld-i1", "Quota de VM insuffisant chez le fournisseur pour la vague 2", "T. Hoarau", 4, "2026-06-20"),
+    iss("cld-i2", "IAM : rôles hérités incohérents entre applications", "L. Dubois", 3, "2026-05-15", "resolu", "2026-06-02"),
   ],
   decisions: [
     dec("cld-d1", "Adopter la stratégie 6R avec priorité au re-platform", "Comité d'architecture", "2026-04-24"),
@@ -220,6 +259,7 @@ const rh: Project = {
   manager: "E. Bardin",
   status: "en-cours",
   health: "red",
+  strategicAxis: "Expérience collaborateur",
   budget: 180_000,
   projectStart: "2026-04-13",
   tasks: [
@@ -255,8 +295,8 @@ const rh: Project = {
     act("rh-a2", "Arbitrer le partage des développeurs CRM / RH", "PMO", "2026-05-12"),
   ],
   issues: [
-    iss("rh-i1", "Documentation de l'API SIRH incomplète côté éditeur", "A. Rakoto", 4),
-    iss("rh-i2", "Retard du module notes de frais faute de spécifications", "E. Bardin", 3),
+    iss("rh-i1", "Documentation de l'API SIRH incomplète côté éditeur", "A. Rakoto", 4, "2026-05-05"),
+    iss("rh-i2", "Retard du module notes de frais faute de spécifications", "E. Bardin", 3, "2026-05-20"),
   ],
   decisions: [
     dec("rh-d1", "Lancer le pilote sur une seule direction avant généralisation", "Sponsor RH", "2026-04-30", "Limiter le risque de rejet utilisateur"),
@@ -275,6 +315,7 @@ const dora: Project = {
   manager: "L. Dubois",
   status: "cadrage",
   health: "green",
+  strategicAxis: "Conformité & résilience",
   budget: 240_000,
   projectStart: "2026-08-03",
   tasks: [
@@ -330,9 +371,34 @@ const demands: Demand[] = [
   demand("dm6", "Application mobile terrain", "Opérations", 130_000, 3, 5, "rejetee", "Reportée : dépendance à la migration cloud non terminée."),
 ];
 
+const governanceEvents: GovernanceEvent[] = [
+  gov("gv1", "comite-portefeuille", "Comité de portefeuille mensuel — mai", "2026-05-06", 8, 7),
+  gov("gv2", "revue-projet", "Revue de projet CRM", "2026-05-14", 5, 5),
+  gov("gv3", "comite-architecture", "Comité d'architecture — stratégie cloud", "2026-04-24", 6, 6),
+  gov("gv4", "comite-portefeuille", "Comité de portefeuille mensuel — juin", "2026-06-03", 8, 6),
+  gov("gv5", "revue-projet", "Revue de projet Portail RH", "2026-06-11", 5, 3),
+  gov("gv6", "comite-conformite", "Comité de conformité DORA", "2026-06-20", 4, 4),
+  gov("gv7", "comite-portefeuille", "Comité de portefeuille mensuel — juillet", "2026-07-01", 8, 8),
+];
+
+const surveys: SurveyResponse[] = [
+  survey("sv1", "2026-05-10", "chef-projet", 9),
+  survey("sv2", "2026-05-10", "sponsor", 8),
+  survey("sv3", "2026-05-12", "equipe", 7),
+  survey("sv4", "2026-06-05", "chef-projet", 6, "Reporting encore trop manuel"),
+  survey("sv5", "2026-06-05", "sponsor", 9),
+  survey("sv6", "2026-06-08", "equipe", 5),
+  survey("sv7", "2026-06-15", "chef-projet", 10),
+  survey("sv8", "2026-06-20", "sponsor", 7),
+  survey("sv9", "2026-07-01", "chef-projet", 8),
+  survey("sv10", "2026-07-01", "equipe", 4, "Charge RAID chronophage"),
+];
+
 export const seedPortfolio: Portfolio = {
   name: "Portefeuille DSI 2026",
   demands,
+  governanceEvents,
+  surveys,
   calendar: {
     workingWeekdays: [1, 2, 3, 4, 5],
     holidays: [

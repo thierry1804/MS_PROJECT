@@ -11,6 +11,8 @@ const ENTITY_LABELS: Record<string, string> = {
   issues: "Problème",
   decisions: "Décision",
   portfolio: "Portefeuille",
+  governance: "Gouvernance",
+  survey: "Baromètre",
 };
 
 const AUDIT_FMT = new Intl.DateTimeFormat("fr-FR", {

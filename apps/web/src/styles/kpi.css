@@ -1,0 +1,104 @@
+.kpi-body {
+  padding: 0 32px 48px;
+  overflow-y: auto;
+}
+
+.kpi-section {
+  margin-top: 12px;
+}
+
+.kpi-section h2 {
+  font-size: var(--fs-lg);
+  letter-spacing: -0.01em;
+  margin: 28px 0 12px;
+}
+
+.kpi-section h3 {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--ink-1);
+  margin: 20px 0 4px;
+}
+
+.kpi-hint {
+  font-size: 10.5px;
+  color: var(--ink-3);
+}
+
+.kpi-mix {
+  margin-top: 12px;
+  border: 1px solid var(--paper-2);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.kpi-mix-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  font-size: var(--fs-sm);
+  border-bottom: 0.5px solid var(--paper-2);
+  background: var(--paper-0);
+}
+
+.kpi-mix-row:last-child {
+  border-bottom: none;
+}
+
+.kpi-mix-row.muted {
+  color: var(--ink-2);
+}
+
+.kpi-mix-axis {
+  color: var(--ink-1);
+}
+
+.kpi-mix-budget {
+  font-weight: 600;
+  color: var(--ink-0);
+}
+
+.kpi-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: start;
+  margin-top: 8px;
+}
+
+.kpi-plain-list .kpi-attendance,
+.kpi-plain-list .kpi-score {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.kpi-score.ok { color: var(--ok); }
+.kpi-score.warn { color: oklch(0.5 0.11 75); }
+.kpi-score.bad { color: var(--critical); }
+
+.kpi-add {
+  margin-top: 8px;
+}
+
+.kpi-note {
+  margin-top: 16px;
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  font-style: italic;
+  max-width: 68ch;
+}
+
+@media (max-width: 900px) {
+  .kpi-columns {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .kpi-body {
+    padding: 0 16px 40px;
+  }
+}
