@@ -1,0 +1,26 @@
+{
+  "name": "@atelier/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc --noEmit",
+    "start": "tsx src/server.ts",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@atelier/scheduling-engine": "workspace:*",
+    "@fastify/cors": "^10.0.2",
+    "@prisma/client": "^6.2.1",
+    "fastify": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "prisma": "^6.2.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.3"
+  }
+}

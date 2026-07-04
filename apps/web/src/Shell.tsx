@@ -1,8 +1,17 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { useStore } from "./store";
+import { useStore, type SyncStatus } from "./store";
+
+const SYNC_LABEL: Record<SyncStatus, string> = {
+  loading: "Chargement…",
+  saving: "Sauvegarde…",
+  saved: "À jour",
+  error: "Échec de sauvegarde",
+  offline: "Hors ligne",
+};
 
 export function Shell() {
   const projects = useStore((s) => s.portfolio.projects);
+  const syncStatus = useStore((s) => s.syncStatus);
 
   return (
     <div className="shell">
@@ -45,6 +54,11 @@ export function Shell() {
             <span className="code">{p.code}</span>
           </NavLink>
         ))}
+
+        <div className={`sync-status ${syncStatus}`}>
+          <span className="sync-dot" />
+          {SYNC_LABEL[syncStatus]}
+        </div>
       </aside>
       <main className="main">
         <Outlet />

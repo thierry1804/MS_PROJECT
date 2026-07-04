@@ -268,37 +268,58 @@ export function ProjectView() {
       </div>
 
       <div className="evm-strip tnum">
-        <div className="evm-chip">
+        <div className="evm-chip" title="Budget At Completion : budget total approuvé pour l'ensemble du projet, tel que planifié à l'origine.">
           <span className="evm-label">BAC</span>
           <span className="evm-value">{EUR.format(metrics.bac)}</span>
         </div>
-        <div className="evm-chip">
+        <div
+          className="evm-chip"
+          title="Planned Value : coût du travail qui devrait être fait à la date du jour, selon le planning initial."
+        >
           <span className="evm-label">VP (PV)</span>
           <span className="evm-value">{EUR.format(metrics.pv)}</span>
         </div>
-        <div className="evm-chip">
+        <div
+          className="evm-chip"
+          title="Earned Value : valeur budgétée du travail réellement accompli à ce jour (indépendant du coût réel dépensé)."
+        >
           <span className="evm-label">VA (EV)</span>
           <span className="evm-value">{EUR.format(metrics.earnedValue)}</span>
         </div>
-        <div className="evm-chip">
+        <div
+          className="evm-chip"
+          title="Actual Cost : coût réellement dépensé à ce jour pour le travail accompli (issu des feuilles de temps et coûts saisis)."
+        >
           <span className="evm-label">CR (AC)</span>
           <span className="evm-value">{EUR.format(metrics.ac)}</span>
         </div>
         <div className="evm-sep" />
-        <div className="evm-chip">
+        <div
+          className="evm-chip"
+          title="Indice de performance délais = VA ÷ VP. Égal à 1 : conforme au planning. En dessous de 1 : le projet avance plus lentement que prévu."
+        >
           <span className="evm-label">IDP (SPI)</span>
           <span className={`evm-value ${evmClass(metrics.spi)}`}>{metrics.spi.toFixed(2)}</span>
         </div>
-        <div className="evm-chip">
+        <div
+          className="evm-chip"
+          title="Indice de performance coûts = VA ÷ CR. Égal à 1 : dans le budget. En dessous de 1 : le travail coûte plus cher que prévu."
+        >
           <span className="evm-label">ICP (CPI)</span>
           <span className={`evm-value ${evmClass(metrics.cpi)}`}>{metrics.cpi.toFixed(2)}</span>
         </div>
         <div className="evm-sep" />
-        <div className="evm-chip">
+        <div
+          className="evm-chip"
+          title="Estimate At Completion = BAC ÷ ICP. Coût total désormais prévu à la fin du projet, compte tenu de la performance actuelle."
+        >
           <span className="evm-label">EAC</span>
           <span className="evm-value">{EUR.format(metrics.eac)}</span>
         </div>
-        <div className="evm-chip">
+        <div
+          className="evm-chip"
+          title="Estimate To Complete = EAC − CR. Montant qu'il reste à dépenser pour terminer le projet."
+        >
           <span className="evm-label">ETC</span>
           <span className={`evm-value ${metrics.etc < 0 ? "evm-good" : ""}`}>{EUR.format(metrics.etc)}</span>
         </div>

@@ -567,6 +567,12 @@
   background: var(--paper-0);
   border: 1px solid var(--paper-2);
   min-width: 80px;
+  cursor: help;
+  transition: border-color 150ms var(--ease-out);
+}
+
+.evm-chip:hover {
+  border-color: var(--ink-3);
 }
 
 .evm-label {
@@ -576,6 +582,8 @@
   letter-spacing: 0.05em;
   color: var(--ink-2);
   line-height: 1.2;
+  text-decoration: underline dotted 1px var(--ink-3);
+  text-underline-offset: 2px;
 }
 
 .evm-value {

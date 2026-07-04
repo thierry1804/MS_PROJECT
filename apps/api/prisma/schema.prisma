@@ -1,0 +1,231 @@
+// Relational schema for a single-tenant portfolio. Every closed string-union
+// (status, health, kind, type...) is stored as plain String: the frontend's
+// TypeScript types are the source of truth for valid values, and encoding
+// them as Postgres enums here would only add migration friction for no gain
+// in a single-user tool.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// Singleton root: exactly one row ("default") ever exists.
+model Portfolio {
+  id               String @id @default("default")
+  name             String
+  calendarWorkdays Int[]  @map("calendar_workdays")
+  calendarHolidays String[] @map("calendar_holidays")
+
+  resources    Resource[]
+  projects     Project[]
+  demands      Demand[]
+  customFields CustomFieldDef[]
+
+  @@map("portfolio")
+}
+
+model Resource {
+  id          String    @id
+  portfolioId String    @map("portfolio_id")
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  name        String
+  kind        String
+  capacity    Float
+  costPerDay  Float     @map("cost_per_day")
+  role        String?
+
+  assignments Assignment[]
+  timeEntries TimeEntry[]
+
+  @@index([portfolioId])
+  @@map("resource")
+}
+
+model Project {
+  id                 String    @id
+  portfolioId        String    @map("portfolio_id")
+  portfolio          Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  code               String
+  name               String
+  description        String
+  manager            String
+  status             String
+  health             String
+  budget             Float
+  projectStart       String    @map("project_start")
+  baselineCapturedAt String?   @map("baseline_captured_at")
+  custom             Json?
+
+  tasks        Task[]
+  dependencies Dependency[]
+  risks        Risk[]
+  actions      Action[]
+  issues       Issue[]
+  decisions    Decision[]
+  timeEntries  TimeEntry[]
+
+  @@index([portfolioId])
+  @@map("project")
+}
+
+/// parentId is a plain string, not a formal self-relation: the frontend
+/// already resolves the whole subtree before a delete, so no FK ordering
+/// or cascade is needed at the DB level.
+model Task {
+  id              String  @id
+  projectId       String  @map("project_id")
+  project         Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name            String
+  parentId        String? @map("parent_id")
+  order           Int     @map("task_order")
+  duration        Int
+  percentComplete Int     @map("percent_complete")
+  constraintType  String? @map("constraint_type")
+  constraintDate  String? @map("constraint_date")
+  fixedCost       Float?  @map("fixed_cost")
+  notes           String?
+  baselineStart   String? @map("baseline_start")
+  baselineFinish  String? @map("baseline_finish")
+  baselineCost    Float?  @map("baseline_cost")
+  actualCost      Float?  @map("actual_cost")
+  custom          Json?
+
+  assignments Assignment[]
+  timeEntries TimeEntry[]
+
+  @@index([projectId])
+  @@map("task")
+}
+
+model Assignment {
+  id         String   @id @default(cuid())
+  taskId     String   @map("task_id")
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  resourceId String   @map("resource_id")
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  units      Float
+
+  @@index([taskId])
+  @@index([resourceId])
+  @@map("assignment")
+}
+
+/// predecessorId / successorId are plain task-id strings for the same
+/// ordering reason as Task.parentId.
+model Dependency {
+  id            String  @id @default(cuid())
+  projectId     String  @map("project_id")
+  project       Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  predecessorId String  @map("predecessor_id")
+  successorId   String  @map("successor_id")
+  type          String
+  lag           Int
+
+  @@index([projectId])
+  @@map("dependency")
+}
+
+model Risk {
+  id          String  @id
+  projectId   String  @map("project_id")
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  label       String
+  probability Int
+  impact      Int
+  owner       String
+  status      String
+  mitigation  String?
+
+  @@index([projectId])
+  @@map("risk")
+}
+
+model Action {
+  id        String  @id
+  projectId String  @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  label     String
+  owner     String
+  dueDate   String  @map("due_date")
+  status    String
+
+  @@index([projectId])
+  @@map("action")
+}
+
+model Issue {
+  id        String  @id
+  projectId String  @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  label     String
+  owner     String
+  severity  Int
+  status    String
+
+  @@index([projectId])
+  @@map("issue")
+}
+
+model Decision {
+  id        String  @id
+  projectId String  @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  label     String
+  decidedBy String  @map("decided_by")
+  date      String
+  rationale String?
+
+  @@index([projectId])
+  @@map("decision")
+}
+
+model TimeEntry {
+  id         String   @id
+  projectId  String   @map("project_id")
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  taskId     String   @map("task_id")
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  resourceId String   @map("resource_id")
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  weekStart  String   @map("week_start")
+  days       Float
+
+  @@index([projectId])
+  @@index([taskId])
+  @@map("time_entry")
+}
+
+model Demand {
+  id                 String    @id
+  portfolioId        String    @map("portfolio_id")
+  portfolio          Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  title              String
+  sponsor            String
+  description        String
+  estBudget          Float     @map("est_budget")
+  value              Int
+  effort             Int
+  stage              String
+  createdAt          String    @map("created_at")
+  convertedProjectId String?   @map("converted_project_id")
+
+  @@index([portfolioId])
+  @@map("demand")
+}
+
+model CustomFieldDef {
+  id          String    @id
+  portfolioId String    @map("portfolio_id")
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  name        String
+  type        String
+  options     String[]
+
+  @@index([portfolioId])
+  @@map("custom_field_def")
+}

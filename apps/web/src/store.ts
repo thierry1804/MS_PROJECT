@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import {
   computeMetrics,
   computeSchedule,
@@ -22,9 +21,14 @@ import type {
 } from "./domain";
 import { todayISO } from "./domain";
 import { seedPortfolio } from "./seed";
+import { fetchPortfolio, savePortfolio } from "./sync";
+
+/** Autosave status, surfaced so the shell can show a small "syncing…" hint. */
+export type SyncStatus = "loading" | "saved" | "saving" | "error" | "offline";
 
 interface AppState {
   portfolio: Portfolio;
+  syncStatus: SyncStatus;
   /** Task selected in the project view. */
   selectedTaskId: string | null;
   /** Collapsed summary task ids. */
@@ -79,10 +83,9 @@ function slugId(code: string): string {
   return `${base}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
-export const useStore = create<AppState>()(
-  persist(
-    (set, get) => ({
+export const useStore = create<AppState>()((set, get) => ({
       portfolio: seedPortfolio,
+      syncStatus: "loading",
       selectedTaskId: null,
       collapsed: {},
 
@@ -505,14 +508,50 @@ export const useStore = create<AppState>()(
         },
       };
     }),
-    }),
-    {
-      name: "atelier-pmo",
-      version: 1,
-      partialize: (s) => ({ portfolio: s.portfolio, collapsed: s.collapsed }),
-    },
-  ),
-);
+}));
+
+/* ------------------------------------------------------------------ */
+/* Neon sync: load on startup, autosave (debounced) on every change.  */
+/* ------------------------------------------------------------------ */
+
+let hydrated = false;
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+async function persistNow(portfolio: Portfolio) {
+  useStore.setState({ syncStatus: "saving" });
+  try {
+    await savePortfolio(portfolio);
+    useStore.setState({ syncStatus: "saved" });
+  } catch {
+    useStore.setState({ syncStatus: "error" });
+  }
+}
+
+function scheduleSave(portfolio: Portfolio) {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => persistNow(portfolio), 800);
+}
+
+useStore.subscribe((state, prev) => {
+  if (!hydrated || state.portfolio === prev.portfolio) return;
+  scheduleSave(state.portfolio);
+});
+
+(async () => {
+  try {
+    const remote = await fetchPortfolio();
+    if (remote) {
+      useStore.setState({ portfolio: remote, syncStatus: "saved" });
+    } else {
+      // Empty database (first run ever): seed it from the local constant.
+      await persistNow(useStore.getState().portfolio);
+    }
+  } catch {
+    useStore.setState({ syncStatus: "offline" });
+  } finally {
+    hydrated = true;
+  }
+})();
 
 /** True if adding predecessor→successor would create a cycle in the dependency graph. */
 function wouldCycle(deps: Dependency[], predecessorId: string, successorId: string): boolean {

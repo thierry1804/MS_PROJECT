@@ -88,6 +88,39 @@ select {
   margin-top: 2px;
 }
 
+.sync-status {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px 2px;
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  border-top: 1px solid var(--paper-2);
+}
+
+.sync-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-3);
+  flex-shrink: 0;
+}
+
+.sync-status.saved .sync-dot {
+  background: var(--ok);
+}
+
+.sync-status.saving .sync-dot,
+.sync-status.loading .sync-dot {
+  background: var(--warn);
+}
+
+.sync-status.error .sync-dot,
+.sync-status.offline .sync-dot {
+  background: var(--critical);
+}
+
 .sidebar-section {
   font-size: var(--fs-xs);
   font-weight: 600;

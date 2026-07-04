@@ -1,0 +1,98 @@
+/**
+ * Wire format for GET/PUT /api/portfolio. Deliberately mirrors
+ * apps/web/src/domain.ts + @atelier/scheduling-engine's Task/Dependency
+ * field-for-field, so the frontend can consume/send it with zero mapping.
+ */
+import type { Dependency, Resource, Task } from "@atelier/scheduling-engine";
+
+export interface WireRisk {
+  id: string;
+  label: string;
+  probability: number;
+  impact: number;
+  owner: string;
+  status: string;
+  mitigation?: string;
+}
+
+export interface WireAction {
+  id: string;
+  label: string;
+  owner: string;
+  dueDate: string;
+  status: string;
+}
+
+export interface WireIssue {
+  id: string;
+  label: string;
+  owner: string;
+  severity: number;
+  status: string;
+}
+
+export interface WireDecision {
+  id: string;
+  label: string;
+  decidedBy: string;
+  date: string;
+  rationale?: string;
+}
+
+export interface WireTimeEntry {
+  id: string;
+  taskId: string;
+  resourceId: string;
+  weekStart: string;
+  days: number;
+}
+
+export interface WireDemand {
+  id: string;
+  title: string;
+  sponsor: string;
+  description: string;
+  estBudget: number;
+  value: number;
+  effort: number;
+  stage: string;
+  createdAt: string;
+  convertedProjectId?: string;
+}
+
+export interface WireCustomFieldDef {
+  id: string;
+  name: string;
+  type: string;
+  options?: string[];
+}
+
+export interface WireProject {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  manager: string;
+  status: string;
+  health: string;
+  budget: number;
+  projectStart: string;
+  tasks: Task[];
+  dependencies: Dependency[];
+  risks: WireRisk[];
+  actions: WireAction[];
+  issues: WireIssue[];
+  decisions: WireDecision[];
+  timesheets: WireTimeEntry[];
+  custom?: Record<string, string | number>;
+  baselineCapturedAt?: string;
+}
+
+export interface WirePortfolio {
+  name: string;
+  calendar: { workingWeekdays: number[]; holidays: string[] };
+  resources: Resource[];
+  projects: WireProject[];
+  demands: WireDemand[];
+  customFields: WireCustomFieldDef[];
+}

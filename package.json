@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "pnpm --filter @atelier/web dev",
+    "dev:api": "pnpm --filter @atelier/api dev",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck"
