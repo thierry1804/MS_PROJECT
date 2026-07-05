@@ -183,6 +183,15 @@ select {
   background: var(--ok);
 }
 
+.sync-status.syncing .sync-dot,
+.sync-status.cloud_pending .sync-dot {
+  background: var(--warn);
+}
+
+.sync-status.conflict_resolved .sync-dot {
+  background: var(--warn);
+}
+
 .sync-status.saving .sync-dot,
 .sync-status.loading .sync-dot {
   background: var(--warn);

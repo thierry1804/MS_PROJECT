@@ -50,10 +50,24 @@ export async function clearAuditLog(): Promise<void> {
 }
 
 export interface DatabaseConfigStatus {
-  source: "env" | "file" | "none";
+  source: "env" | "file" | "none" | "desktop";
   configured: boolean;
   databaseUrlMasked: string;
   directUrlMasked: string;
+}
+
+export interface CloudSyncStatus {
+  desktop: boolean;
+  enabled: boolean;
+  online: boolean;
+  pending: boolean;
+  conflict: boolean;
+  conflictWinner?: string | null;
+  lastSyncedAt?: string | null;
+  localRevision?: number;
+  cloudRevision?: number;
+  localDbPath?: string | null;
+  cloudUrlMasked?: string;
 }
 
 export async function fetchDatabaseConfig(): Promise<DatabaseConfigStatus> {
@@ -76,6 +90,38 @@ export async function saveDatabaseConfig(config: {
     throw new Error(body?.error ?? `PUT /api/config/database → ${res.status}`);
   }
   return (await res.json()) as { reconnected: boolean };
+}
+
+export async function fetchCloudSyncStatus(): Promise<CloudSyncStatus> {
+  const res = await fetch("/api/sync/status");
+  if (!res.ok) throw new Error(`GET /api/sync/status → ${res.status}`);
+  return (await res.json()) as CloudSyncStatus;
+}
+
+export async function saveCloudConfig(config: {
+  enabled: boolean;
+  databaseUrl?: string;
+  directUrl?: string;
+}): Promise<void> {
+  const res = await fetch("/api/config/cloud", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(config),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error ?? `PUT /api/config/cloud → ${res.status}`);
+  }
+}
+
+export async function triggerSyncNow(): Promise<void> {
+  const res = await fetch("/api/sync/now", { method: "POST" });
+  if (!res.ok) throw new Error(`POST /api/sync/now → ${res.status}`);
+}
+
+export async function dismissSyncConflict(): Promise<void> {
+  const res = await fetch("/api/sync/dismiss-conflict", { method: "POST" });
+  if (!res.ok) throw new Error(`POST /api/sync/dismiss-conflict → ${res.status}`);
 }
 
 /** Best-effort: an audit entry that fails to save must never block the actual edit. */

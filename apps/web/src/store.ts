@@ -24,7 +24,7 @@ import type {
   SurveyResponse,
 } from "./domain";
 import { DEMAND_STAGE_LABELS, todayISO } from "./domain";
-import { fetchPortfolio, logAudit, savePortfolio } from "./sync";
+import { fetchPortfolio, fetchCloudSyncStatus, logAudit, savePortfolio, triggerSyncNow } from "./sync";
 
 const EMPTY_PORTFOLIO: Portfolio = {
   name: "Portefeuille",
@@ -73,7 +73,15 @@ function summarizeTaskPatch(before: Task, patch: Partial<Task>): string | null {
 }
 
 /** Autosave status, surfaced so the shell can show a small "syncing…" hint. */
-export type SyncStatus = "loading" | "saved" | "saving" | "error" | "offline";
+export type SyncStatus =
+  | "loading"
+  | "saved"
+  | "saving"
+  | "error"
+  | "offline"
+  | "syncing"
+  | "cloud_pending"
+  | "conflict_resolved";
 
 interface AppState {
   portfolio: Portfolio;
@@ -790,9 +798,26 @@ async function persistNow(portfolio: Portfolio) {
   useStore.setState({ syncStatus: "saving" });
   try {
     await savePortfolio(portfolio);
+    await refreshCloudSyncStatus();
     useStore.setState({ syncStatus: "saved" });
   } catch {
     useStore.setState({ syncStatus: "error" });
+  }
+}
+
+async function refreshCloudSyncStatus() {
+  try {
+    const status = await fetchCloudSyncStatus();
+    if (!status.desktop) return;
+    if (status.conflict) {
+      useStore.setState({ syncStatus: "conflict_resolved" });
+      return;
+    }
+    if (status.pending) {
+      useStore.setState({ syncStatus: "cloud_pending" });
+    }
+  } catch {
+    // ignore — cloud status is best-effort
   }
 }
 
@@ -812,15 +837,25 @@ useStore.subscribe((state, prev) => {
     if (remote) {
       useStore.setState({ portfolio: remote, syncStatus: "saved" });
     } else {
-      // Empty database (first run ever): persist the initial empty portfolio.
       await persistNow(useStore.getState().portfolio);
     }
+    await refreshCloudSyncStatus();
   } catch {
     useStore.setState({ syncStatus: "offline" });
   } finally {
     hydrated = true;
   }
 })();
+
+window.addEventListener("online", () => {
+  void triggerSyncNow()
+    .then(refreshCloudSyncStatus)
+    .catch(() => undefined);
+});
+
+setInterval(() => {
+  void refreshCloudSyncStatus();
+}, 30_000);
 
 /** True if adding predecessor→successor would create a cycle in the dependency graph. */
 function wouldCycle(deps: Dependency[], predecessorId: string, successorId: string): boolean {

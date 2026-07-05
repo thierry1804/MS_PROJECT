@@ -1,0 +1,42 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Atelier",
+  "version": "0.1.0",
+  "identifier": "com.atelier.app",
+  "build": {
+    "frontendDist": "../../web/dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "pnpm --filter @atelier/web dev",
+    "beforeBuildCommand": "pnpm --filter @atelier/web build && pnpm --filter @atelier/api db:generate && pnpm --filter @atelier/api bundle"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Atelier",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 960,
+        "minHeight": 640,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["msi", "deb", "appimage"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": {
+      "../../api/dist/server.mjs": "api/server.mjs"
+    }
+  }
+}

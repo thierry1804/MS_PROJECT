@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import type { CustomFieldDef, CustomFieldType } from "../domain";
 import { portfolioSidebarLabel } from "../domain";
-import { fetchDatabaseConfig, saveDatabaseConfig, type DatabaseConfigStatus } from "../sync";
+import {
+  fetchCloudSyncStatus,
+  fetchDatabaseConfig,
+  saveCloudConfig,
+  saveDatabaseConfig,
+  type CloudSyncStatus,
+  type DatabaseConfigStatus,
+} from "../sync";
 import { useStore } from "../store";
 import "../styles/settings.css";
 
@@ -15,6 +22,7 @@ const DB_SOURCE_LABELS: Record<DatabaseConfigStatus["source"], string> = {
   file: "Fichier local",
   env: "Fichier .env",
   none: "Non configurée",
+  desktop: "SQLite locale",
 };
 
 const EMPTY: CustomFieldDef[] = [];
@@ -40,6 +48,14 @@ export function SettingsView() {
   const [dbSaved, setDbSaved] = useState(false);
   const [dbMessage, setDbMessage] = useState<string | null>(null);
 
+  const [cloudStatus, setCloudStatus] = useState<CloudSyncStatus | null>(null);
+  const [cloudEnabled, setCloudEnabled] = useState(false);
+  const [cloudDatabaseUrl, setCloudDatabaseUrl] = useState("");
+  const [cloudDirectUrl, setCloudDirectUrl] = useState("");
+  const [cloudSaving, setCloudSaving] = useState(false);
+  const [cloudMessage, setCloudMessage] = useState<string | null>(null);
+  const [cloudError, setCloudError] = useState(false);
+
   const [name, setName] = useState("");
   const [type, setType] = useState<CustomFieldType>("text");
   const [options, setOptions] = useState("");
@@ -54,7 +70,13 @@ export function SettingsView() {
     fetchDatabaseConfig()
       .then(setDbStatus)
       .catch(() => setDbError(true));
-  }, [dbSaved]);
+    fetchCloudSyncStatus()
+      .then((status) => {
+        setCloudStatus(status);
+        setCloudEnabled(status.enabled);
+      })
+      .catch(() => setCloudError(true));
+  }, [dbSaved, cloudSaving]);
 
   function saveGeneral() {
     updateAppSettings({
@@ -86,6 +108,27 @@ export function SettingsView() {
     }
   }
 
+  async function saveCloud() {
+    setCloudSaving(true);
+    setCloudMessage(null);
+    try {
+      await saveCloudConfig({
+        enabled: cloudEnabled,
+        databaseUrl: cloudDatabaseUrl.trim() || undefined,
+        directUrl: cloudDirectUrl.trim() || undefined,
+      });
+      setCloudDatabaseUrl("");
+      setCloudDirectUrl("");
+      setCloudError(false);
+      setCloudMessage(cloudEnabled ? "Synchronisation cloud activée." : "Synchronisation cloud désactivée.");
+    } catch (err) {
+      setCloudError(true);
+      setCloudMessage(err instanceof Error ? err.message : "Échec de la configuration cloud.");
+    } finally {
+      setCloudSaving(false);
+    }
+  }
+
   function submitField() {
     if (!name.trim()) return;
     const field: CustomFieldDef = {
@@ -112,7 +155,7 @@ export function SettingsView() {
       <div className="view-header set-page-header">
         <div>
           <h1>Paramètres</h1>
-          <span className="sub">Identité de l'application, exercice comptable, base Neon et champs métier.</span>
+          <span className="sub">Identité de l'application, base de données, synchronisation cloud et champs métier.</span>
         </div>
       </div>
 
@@ -172,11 +215,15 @@ export function SettingsView() {
 
           <section className="set-card">
             <div className="set-card-head">
-              <h2>Base de données Neon</h2>
-              <p className="set-hint">Connexion PostgreSQL côté serveur. Prioritaire sur le fichier `.env`.</p>
+              <h2>{cloudStatus?.desktop ? "Base locale" : "Base de données Neon"}</h2>
+              <p className="set-hint">
+                {cloudStatus?.desktop
+                  ? "SQLite embarquée dans le profil utilisateur. Fonctionne hors ligne."
+                  : "Connexion PostgreSQL côté serveur. Prioritaire sur le fichier `.env`."}
+              </p>
             </div>
 
-            {dbError && (
+            {dbError && !cloudStatus?.desktop && (
               <div className="set-callout warn">API hors ligne — impossible de lire la configuration actuelle.</div>
             )}
 
@@ -191,12 +238,12 @@ export function SettingsView() {
                 {dbStatus.configured && (
                   <>
                     <div className="set-status-row">
-                      <dt>Pooler</dt>
+                      <dt>{cloudStatus?.desktop ? "Fichier" : "Pooler"}</dt>
                       <dd className="set-url" title={dbStatus.databaseUrlMasked}>
                         {dbStatus.databaseUrlMasked}
                       </dd>
                     </div>
-                    {dbStatus.directUrlMasked !== dbStatus.databaseUrlMasked && (
+                    {!cloudStatus?.desktop && dbStatus.directUrlMasked !== dbStatus.databaseUrlMasked && (
                       <div className="set-status-row">
                         <dt>Direct</dt>
                         <dd className="set-url" title={dbStatus.directUrlMasked}>
@@ -209,47 +256,147 @@ export function SettingsView() {
               </dl>
             )}
 
-            <div className="set-callout">
-              La connexion est testée et appliquée automatiquement — aucun redémarrage manuel requis.
-            </div>
+            {!cloudStatus?.desktop && (
+              <>
+                <div className="set-callout">
+                  La connexion est testée et appliquée automatiquement — aucun redémarrage manuel requis.
+                </div>
 
-            {dbMessage && (
-              <p className={`set-feedback${dbError ? " warn" : " ok"}`}>{dbMessage}</p>
+                {dbMessage && (
+                  <p className={`set-feedback${dbError ? " warn" : " ok"}`}>{dbMessage}</p>
+                )}
+
+                <div className="set-fields-stack">
+                  <label className="set-field">
+                    <span>URL pooler</span>
+                    <input
+                      type="password"
+                      value={databaseUrl}
+                      onChange={(e) => setDatabaseUrl(e.target.value)}
+                      placeholder="postgresql://user:password@host-pooler…/dbname?sslmode=require"
+                      autoComplete="off"
+                    />
+                  </label>
+                  <label className="set-field">
+                    <span>URL directe <em className="set-optional">(optionnel)</em></span>
+                    <input
+                      type="password"
+                      value={directUrl}
+                      onChange={(e) => setDirectUrl(e.target.value)}
+                      placeholder="postgresql://user:password@host…/dbname?sslmode=require"
+                      autoComplete="off"
+                    />
+                  </label>
+                </div>
+
+                <footer className="set-card-foot">
+                  <button
+                    className="set-save"
+                    onClick={() => void saveDatabase()}
+                    disabled={!databaseUrl.trim() || dbSaving}
+                  >
+                    {dbSaving ? "Enregistrement…" : "Enregistrer la connexion"}
+                  </button>
+                </footer>
+              </>
             )}
-
-            <div className="set-fields-stack">
-              <label className="set-field">
-                <span>URL pooler</span>
-                <input
-                  type="password"
-                  value={databaseUrl}
-                  onChange={(e) => setDatabaseUrl(e.target.value)}
-                  placeholder="postgresql://user:password@host-pooler…/dbname?sslmode=require"
-                  autoComplete="off"
-                />
-              </label>
-              <label className="set-field">
-                <span>URL directe <em className="set-optional">(optionnel)</em></span>
-                <input
-                  type="password"
-                  value={directUrl}
-                  onChange={(e) => setDirectUrl(e.target.value)}
-                  placeholder="postgresql://user:password@host…/dbname?sslmode=require"
-                  autoComplete="off"
-                />
-              </label>
-            </div>
-
-            <footer className="set-card-foot">
-              <button
-                className="set-save"
-                onClick={() => void saveDatabase()}
-                disabled={!databaseUrl.trim() || dbSaving}
-              >
-                {dbSaving ? "Enregistrement…" : "Enregistrer la connexion"}
-              </button>
-            </footer>
           </section>
+
+          {cloudStatus?.desktop && (
+            <section className="set-card">
+              <div className="set-card-head">
+                <h2>Synchronisation cloud</h2>
+                <p className="set-hint">
+                  Réplique automatique vers Neon. Last-write-wins avec notification en cas de conflit.
+                </p>
+              </div>
+
+              {cloudError && (
+                <div className="set-callout warn">Impossible de lire l'état de synchronisation.</div>
+              )}
+
+              {cloudStatus && (
+                <dl className="set-status">
+                  <div className="set-status-row">
+                    <dt>État</dt>
+                    <dd>{cloudStatus.enabled ? (cloudStatus.online ? "Connecté" : "Hors ligne") : "Désactivée"}</dd>
+                  </div>
+                  {cloudStatus.lastSyncedAt && (
+                    <div className="set-status-row">
+                      <dt>Dernière sync</dt>
+                      <dd>{new Date(cloudStatus.lastSyncedAt).toLocaleString()}</dd>
+                    </div>
+                  )}
+                  {cloudStatus.enabled && (
+                    <>
+                      <div className="set-status-row">
+                        <dt>Révision locale</dt>
+                        <dd>{cloudStatus.localRevision ?? 0}</dd>
+                      </div>
+                      <div className="set-status-row">
+                        <dt>Révision cloud</dt>
+                        <dd>{cloudStatus.cloudRevision ?? 0}</dd>
+                      </div>
+                      {cloudStatus.cloudUrlMasked && (
+                        <div className="set-status-row">
+                          <dt>Neon</dt>
+                          <dd className="set-url">{cloudStatus.cloudUrlMasked}</dd>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </dl>
+              )}
+
+              {cloudMessage && (
+                <p className={`set-feedback${cloudError ? " warn" : " ok"}`}>{cloudMessage}</p>
+              )}
+
+              <label className="set-field set-field-inline">
+                <span>Activer la synchronisation cloud</span>
+                <input
+                  type="checkbox"
+                  checked={cloudEnabled}
+                  onChange={(e) => setCloudEnabled(e.target.checked)}
+                />
+              </label>
+
+              {cloudEnabled && (
+                <div className="set-fields-stack">
+                  <label className="set-field">
+                    <span>URL pooler Neon</span>
+                    <input
+                      type="password"
+                      value={cloudDatabaseUrl}
+                      onChange={(e) => setCloudDatabaseUrl(e.target.value)}
+                      placeholder="postgresql://user:password@host-pooler…/dbname?sslmode=require"
+                      autoComplete="off"
+                    />
+                  </label>
+                  <label className="set-field">
+                    <span>URL directe <em className="set-optional">(optionnel)</em></span>
+                    <input
+                      type="password"
+                      value={cloudDirectUrl}
+                      onChange={(e) => setCloudDirectUrl(e.target.value)}
+                      placeholder="postgresql://user:password@host…/dbname?sslmode=require"
+                      autoComplete="off"
+                    />
+                  </label>
+                </div>
+              )}
+
+              <footer className="set-card-foot">
+                <button
+                  className="set-save"
+                  onClick={() => void saveCloud()}
+                  disabled={cloudSaving || (cloudEnabled && !cloudDatabaseUrl.trim() && !cloudStatus?.enabled)}
+                >
+                  {cloudSaving ? "Enregistrement…" : "Enregistrer la synchronisation"}
+                </button>
+              </footer>
+            </section>
+          )}
         </div>
 
         <section className="set-card set-card-wide">

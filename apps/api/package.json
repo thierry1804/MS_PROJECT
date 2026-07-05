@@ -5,9 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "dev:desktop": "cross-env DESKTOP_MODE=1 DATABASE_URL=file:./data/portfolio.db tsx watch src/server.ts",
     "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "bundle": "esbuild src/server.ts --bundle --platform=node --format=esm --outfile=dist/server.mjs --packages=external",
     "start": "tsx src/server.ts",
+    "db:generate": "prisma generate && prisma generate --schema=prisma/schema.sqlite.prisma",
     "db:push": "prisma db push",
+    "db:push:pg": "prisma db push",
+    "db:push:sqlite": "prisma db push --schema=prisma/schema.sqlite.prisma",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio"
   },
@@ -19,6 +25,8 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.7",
+    "cross-env": "^7.0.3",
+    "esbuild": "^0.25.5",
     "prisma": "^6.2.1",
     "tsx": "^4.19.2",
     "typescript": "^5.8.3"

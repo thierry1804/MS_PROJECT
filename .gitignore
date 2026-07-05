@@ -1,5 +1,6 @@
 node_modules/
 dist/
+apps/api/dist/
 *.local
 .DS_Store
 coverage/
@@ -7,3 +8,5 @@ coverage/
 .env.*
 !.env.example
 apps/api/data/
+apps/api/prisma/data/
+apps/api/src/generated/

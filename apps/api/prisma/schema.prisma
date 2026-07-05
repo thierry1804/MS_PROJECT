@@ -16,12 +16,16 @@ datasource db {
 
 /// Singleton root: exactly one row ("default") ever exists.
 model Portfolio {
-  id               String @id @default("default")
+  id               String   @id @default("default")
   name             String
-  appName          String @default("Atelier") @map("app_name")
-  fiscalYear       Int    @default(2026) @map("fiscal_year")
-  calendarWorkdays Int[]  @map("calendar_workdays")
+  appName          String   @default("Atelier") @map("app_name")
+  fiscalYear       Int      @default(2026) @map("fiscal_year")
+  calendarWorkdays Int[]    @map("calendar_workdays")
   calendarHolidays String[] @map("calendar_holidays")
+  revision         Int      @default(0)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at")
+  governanceEvents Json?    @map("governance_events")
+  surveys          Json?    @map("surveys")
 
   resources    Resource[]
   projects     Project[]

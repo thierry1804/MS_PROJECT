@@ -16,6 +16,7 @@ import {
   TimeNavIcon,
 } from "./components/icons";
 import { useStore, type SyncStatus } from "./store";
+import { dismissSyncConflict } from "./sync";
 import { portfolioSidebarLabel, type Health } from "./domain";
 import "./styles/palette.css";
 
@@ -25,6 +26,9 @@ const SYNC_LABEL: Record<SyncStatus, string> = {
   saved: "À jour",
   error: "Échec de sauvegarde",
   offline: "Hors ligne",
+  syncing: "Sync cloud…",
+  cloud_pending: "Cloud en attente",
+  conflict_resolved: "Conflit résolu (LWW)",
 };
 
 const SIDEBAR_COLLAPSED_KEY = "atelier-sidebar-collapsed";
@@ -207,6 +211,14 @@ export function Shell() {
           {syncStatus === "error" && (
             <button className="sync-retry" onClick={() => retrySync()}>
               Réessayer
+            </button>
+          )}
+          {syncStatus === "conflict_resolved" && (
+            <button
+              className="sync-retry"
+              onClick={() => void dismissSyncConflict().then(() => useStore.setState({ syncStatus: "saved" }))}
+            >
+              OK
             </button>
           )}
         </div>

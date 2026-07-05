@@ -9,7 +9,10 @@
   "scripts": {
     "dev": "pnpm --filter @atelier/web dev",
     "dev:api": "pnpm --filter @atelier/api dev",
+    "dev:desktop": "pnpm --filter @atelier/desktop dev",
+    "dev:desktop:api": "pnpm --filter @atelier/api dev:desktop",
     "build": "pnpm -r build",
+    "build:desktop": "pnpm --filter @atelier/web build && pnpm --filter @atelier/api db:generate && pnpm --filter @atelier/api bundle && pnpm --filter @atelier/desktop build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck"
   }

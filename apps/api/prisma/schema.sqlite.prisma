@@ -1,0 +1,260 @@
+// SQLite schema for Atelier Desktop local storage + cloud sync metadata.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/sqlite-client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// Singleton root: exactly one row ("default") ever exists.
+model Portfolio {
+  id               String   @id @default("default")
+  name             String
+  appName          String   @default("Atelier") @map("app_name")
+  fiscalYear       Int      @default(2026) @map("fiscal_year")
+  calendarWorkdays Json     @map("calendar_workdays")
+  calendarHolidays Json     @map("calendar_holidays")
+  revision         Int      @default(0)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at")
+  governanceEvents Json?    @map("governance_events")
+  surveys          Json?    @map("surveys")
+
+  resources    Resource[]
+  projects     Project[]
+  demands      Demand[]
+  customFields CustomFieldDef[]
+
+  @@map("portfolio")
+}
+
+model Resource {
+  id          String    @id
+  portfolioId String    @map("portfolio_id")
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  name        String
+  kind        String
+  capacity    Float
+  costPerDay  Float     @map("cost_per_day")
+  role        String?
+
+  assignments Assignment[]
+  timeEntries TimeEntry[]
+
+  @@index([portfolioId])
+  @@map("resource")
+}
+
+model Project {
+  id                 String    @id
+  portfolioId        String    @map("portfolio_id")
+  portfolio          Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  code               String
+  name               String
+  description        String
+  manager            String
+  status             String
+  health             String
+  budget             Float
+  projectStart       String    @map("project_start")
+  baselineCapturedAt String?   @map("baseline_captured_at")
+  custom             Json?
+
+  tasks        Task[]
+  dependencies Dependency[]
+  risks        Risk[]
+  actions      Action[]
+  issues       Issue[]
+  decisions    Decision[]
+  timeEntries  TimeEntry[]
+
+  @@index([portfolioId])
+  @@map("project")
+}
+
+model Task {
+  id              String  @id
+  projectId       String  @map("project_id")
+  project         Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name            String
+  parentId        String? @map("parent_id")
+  order           Int     @map("task_order")
+  duration        Int
+  percentComplete Int     @map("percent_complete")
+  constraintType  String? @map("constraint_type")
+  constraintDate  String? @map("constraint_date")
+  fixedCost       Float?  @map("fixed_cost")
+  notes           String?
+  baselineStart   String? @map("baseline_start")
+  baselineFinish  String? @map("baseline_finish")
+  baselineCost    Float?  @map("baseline_cost")
+  actualCost      Float?  @map("actual_cost")
+  custom          Json?
+
+  assignments Assignment[]
+  timeEntries TimeEntry[]
+
+  @@index([projectId])
+  @@map("task")
+}
+
+model Assignment {
+  id         String   @id @default(cuid())
+  taskId     String   @map("task_id")
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  resourceId String   @map("resource_id")
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  units      Float
+
+  @@index([taskId])
+  @@index([resourceId])
+  @@map("assignment")
+}
+
+model Dependency {
+  id            String  @id @default(cuid())
+  projectId     String  @map("project_id")
+  project       Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  predecessorId String  @map("predecessor_id")
+  successorId   String  @map("successor_id")
+  type          String
+  lag           Int
+
+  @@index([projectId])
+  @@map("dependency")
+}
+
+model Risk {
+  id          String  @id
+  projectId   String  @map("project_id")
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  label       String
+  probability Int
+  impact      Int
+  owner       String
+  status      String
+  mitigation  String?
+
+  @@index([projectId])
+  @@map("risk")
+}
+
+model Action {
+  id        String  @id
+  projectId String  @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  label     String
+  owner     String
+  dueDate   String  @map("due_date")
+  status    String
+
+  @@index([projectId])
+  @@map("action")
+}
+
+model Issue {
+  id        String  @id
+  projectId String  @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  label     String
+  owner     String
+  severity  Int
+  status    String
+
+  @@index([projectId])
+  @@map("issue")
+}
+
+model Decision {
+  id        String  @id
+  projectId String  @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  label     String
+  decidedBy String  @map("decided_by")
+  date      String
+  rationale String?
+
+  @@index([projectId])
+  @@map("decision")
+}
+
+model TimeEntry {
+  id         String   @id
+  projectId  String   @map("project_id")
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  taskId     String   @map("task_id")
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  resourceId String   @map("resource_id")
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  weekStart  String   @map("week_start")
+  days       Float
+
+  @@index([projectId])
+  @@index([taskId])
+  @@map("time_entry")
+}
+
+model Demand {
+  id                 String    @id
+  portfolioId        String    @map("portfolio_id")
+  portfolio          Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  title              String
+  sponsor            String
+  description        String
+  estBudget          Float     @map("est_budget")
+  value              Int
+  effort             Int
+  stage              String
+  createdAt          String    @map("created_at")
+  convertedProjectId String?   @map("converted_project_id")
+  gateHistory        Json?     @map("gate_history")
+
+  @@index([portfolioId])
+  @@map("demand")
+}
+
+model AuditEntry {
+  id         String   @id @default(cuid())
+  at         DateTime @default(now())
+  actor      String   @default("—")
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  action     String
+  summary    String
+  detail     Json?
+
+  @@index([at])
+  @@map("audit_entry")
+}
+
+model CustomFieldDef {
+  id          String    @id
+  portfolioId String    @map("portfolio_id")
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  name        String
+  type        String
+  options     Json
+
+  @@index([portfolioId])
+  @@map("custom_field_def")
+}
+
+/// Desktop-only sync metadata (singleton id "default").
+model SyncState {
+  id                 String    @id @default("default")
+  enabled            Boolean   @default(false)
+  cloudDatabaseUrl   String?   @map("cloud_database_url")
+  cloudDirectUrl     String?   @map("cloud_direct_url")
+  lastSyncedAt       DateTime? @map("last_synced_at")
+  lastLocalRevision  Int       @default(0) @map("last_local_revision")
+  lastCloudRevision  Int       @default(0) @map("last_cloud_revision")
+  pendingPush        Boolean   @default(false) @map("pending_push")
+  lastConflictAt     DateTime? @map("last_conflict_at")
+  lastConflictWinner String?   @map("last_conflict_winner")
+  conflictDismissed  Boolean   @default(false) @map("conflict_dismissed")
+
+  @@map("sync_state")
+}

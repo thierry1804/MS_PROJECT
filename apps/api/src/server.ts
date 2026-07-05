@@ -1,11 +1,19 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
-import { prisma, reconnectPrisma } from "./db.js";
+import { prisma, reconnectPrisma, isDesktopMode, initDesktopDb } from "./db.js";
 import { getPortfolio, replacePortfolio } from "./portfolio.js";
 import {
   getDatabaseConfigStatus,
   writeRuntimeDatabaseConfig,
 } from "./runtime-config.js";
+import {
+  afterLocalSave,
+  configureCloud,
+  dismissConflict,
+  getSyncStatus,
+  startPeriodicSync,
+  syncNow,
+} from "./sync-engine.js";
 import type { WirePortfolio } from "./types.js";
 
 interface AuditPayload {
@@ -20,10 +28,24 @@ interface AuditPayload {
 const app = Fastify({ logger: true });
 
 await app.register(cors, {
-  origin: [/^http:\/\/localhost:\d+$/],
+  origin: [
+    /^http:\/\/localhost:\d+$/,
+    /^http:\/\/127\.0\.0\.1:\d+$/,
+    /^tauri:\/\/localhost$/,
+    /^https:\/\/tauri\.localhost$/,
+  ],
 });
 
-app.get("/api/health", async () => ({ ok: true }));
+if (isDesktopMode) {
+  await initDesktopDb();
+  startPeriodicSync();
+  void syncNow();
+}
+
+app.get("/api/health", async () => ({
+  ok: true,
+  desktop: isDesktopMode,
+}));
 
 app.get("/api/portfolio", async (_req, reply) => {
   const portfolio = await getPortfolio(prisma);
@@ -37,6 +59,7 @@ app.put("/api/portfolio", async (req, reply) => {
     return reply.code(400).send({ error: "Corps de requête invalide." });
   }
   await replacePortfolio(prisma, payload);
+  void afterLocalSave();
   return { ok: true };
 });
 
@@ -69,9 +92,23 @@ app.delete("/api/audit", async () => {
   return { ok: true, count };
 });
 
-app.get("/api/config/database", async () => getDatabaseConfigStatus());
+app.get("/api/config/database", async () => {
+  if (isDesktopMode) {
+    const status = await getSyncStatus();
+    return {
+      source: "desktop" as const,
+      configured: Boolean(status.localDbPath),
+      databaseUrlMasked: status.localDbPath ?? "",
+      directUrlMasked: status.localDbPath ?? "",
+    };
+  }
+  return getDatabaseConfigStatus();
+});
 
 app.put("/api/config/database", async (req, reply) => {
+  if (isDesktopMode) {
+    return reply.code(400).send({ error: "En mode desktop, configurez la synchronisation cloud." });
+  }
   const body = req.body as { databaseUrl?: string; directUrl?: string };
   const databaseUrl = body?.databaseUrl?.trim();
   if (!databaseUrl) {
@@ -85,6 +122,35 @@ app.put("/api/config/database", async (req, reply) => {
     return reply.code(400).send({ error: "Connexion impossible avec ces URLs. Vérifiez les identifiants." });
   }
   return { ok: true, reconnected: true };
+});
+
+app.put("/api/config/cloud", async (req, reply) => {
+  if (!isDesktopMode) {
+    return reply.code(400).send({ error: "La synchronisation cloud est réservée au mode desktop." });
+  }
+  const body = req.body as { enabled?: boolean; databaseUrl?: string; directUrl?: string };
+  const result = await configureCloud({
+    enabled: Boolean(body?.enabled),
+    databaseUrl: body?.databaseUrl,
+    directUrl: body?.directUrl,
+  });
+  if (!result.ok) {
+    const messages: Record<string, string> = {
+      url_required: "URL Neon requise pour activer la synchronisation.",
+      connection_failed: "Connexion cloud impossible. Vérifiez les URLs Neon.",
+    };
+    return reply.code(400).send({ error: messages[result.error ?? ""] ?? "Configuration invalide." });
+  }
+  return { ok: true };
+});
+
+app.get("/api/sync/status", async () => getSyncStatus());
+
+app.post("/api/sync/now", async () => syncNow());
+
+app.post("/api/sync/dismiss-conflict", async () => {
+  await dismissConflict();
+  return { ok: true };
 });
 
 const port = Number(process.env.PORT ?? 8787);

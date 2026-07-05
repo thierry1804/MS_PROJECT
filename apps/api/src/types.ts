@@ -108,6 +108,22 @@ export interface WireProject {
   baselineCapturedAt?: string;
 }
 
+export interface WireGovernanceEvent {
+  id: string;
+  date: string;
+  type: string;
+  projectId?: string;
+  notes?: string;
+}
+
+export interface WireSurveyResponse {
+  id: string;
+  date: string;
+  role: string;
+  score: number;
+  comment?: string;
+}
+
 export interface WirePortfolio {
   name: string;
   appName?: string;
@@ -117,4 +133,15 @@ export interface WirePortfolio {
   projects: WireProject[];
   demands: WireDemand[];
   customFields: WireCustomFieldDef[];
+  governanceEvents?: WireGovernanceEvent[];
+  surveys?: WireSurveyResponse[];
+  /** Monotonic counter for sync; set by the API on save. */
+  revision?: number;
+  /** ISO datetime of last portfolio mutation. */
+  updatedAt?: string;
+}
+
+export interface PortfolioMeta {
+  revision: number;
+  updatedAt: Date;
 }

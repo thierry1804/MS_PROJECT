@@ -8,11 +8,14 @@ Réplique améliorée de MS Project, orientée gestion de portefeuille. Monorepo
 |--------|--------------|
 | Web | React 19, Vite 6, React Router 7 (hash), Zustand 5, CSS modules par vue |
 | API | Fastify 5, CORS localhost, port 8787 |
-| Données | Prisma 6, PostgreSQL (Neon serverless) |
+| Desktop | Tauri 2, SQLite local, sync Neon optionnelle |
+| Données | Prisma 6, PostgreSQL (Neon) ou SQLite (desktop) |
 | Moteur | `@atelier/scheduling-engine`. CPM, calendriers, EVM, nivellement |
 | Langage | TypeScript 5.8, pnpm 10 |
 
 ## Démarrer
+
+### Web
 
 ```bash
 pnpm install
@@ -29,11 +32,29 @@ Au premier lancement, si la base est vide, le client persiste un portefeuille in
 
 La connexion Neon peut aussi être configurée depuis **Paramètres** dans l'UI (prioritaire sur le `.env`, appliquée sans redémarrage).
 
+### Desktop (Windows / Linux)
+
+Prérequis : [Rust](https://rustup.rs/), Node 22, pnpm 10. Sous Linux, dépendances WebKit (`libwebkit2gtk-4.1-dev`, etc.).
+
+```bash
+pnpm install
+pnpm --filter @atelier/api db:generate
+pnpm --filter @atelier/api db:push:sqlite   # schéma SQLite de dev (optionnel)
+pnpm dev:desktop                             # Tauri + Vite + API SQLite locale
+pnpm build:desktop                           # installateur .msi / .deb / AppImage
+```
+
+Au premier lancement desktop :
+- Base SQLite créée dans le dossier profil utilisateur (`app_data_dir/portfolio.db`)
+- Mode **offline** par défaut
+- **Paramètres → Synchronisation cloud** : URLs Neon pour activer la sync automatique (last-write-wins avec notification en cas de conflit)
+
 ## Structure
 
 ```
 apps/web                     # React + Vite : shell PMO, vues portefeuille/projet, Gantt, KPI
-apps/api                     # Fastify + Prisma : API portefeuille, audit, config runtime DB
+apps/api                     # Fastify + Prisma : API portefeuille, audit, sync cloud
+apps/desktop                 # Tauri 2 : shell desktop, sidecar API, SQLite locale
 packages/scheduling-engine   # moteur pur TS : CPM, calendriers, EVM, charge, nivellement
 ```
 

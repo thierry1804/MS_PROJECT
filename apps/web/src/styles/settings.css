@@ -388,3 +388,14 @@
     gap: 2px;
   }
 }
+
+.set-field-inline {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px 12px;
+}
+
+.set-field-inline input[type="checkbox"] {
+  width: auto;
+}

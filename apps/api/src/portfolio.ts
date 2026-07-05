@@ -1,8 +1,41 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import type { ConstraintType, DependencyType, ResourceKind, Task } from "@atelier/scheduling-engine";
-import type { WireGateRecord, WirePortfolio, WireProject } from "./types.js";
+import type {
+  PortfolioMeta,
+  WireGateRecord,
+  WireGovernanceEvent,
+  WirePortfolio,
+  WireProject,
+  WireSurveyResponse,
+} from "./types.js";
 
 const PORTFOLIO_ID = "default";
+
+function readIntArray(value: unknown): number[] {
+  return Array.isArray(value) ? (value as number[]) : [];
+}
+
+function readStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? (value as string[]) : [];
+}
+
+export interface ReplacePortfolioOptions {
+  /** Preserve explicit revision/updatedAt (sync pull/push). */
+  revision?: number;
+  updatedAt?: Date;
+  /** When true, do not increment revision (internal sync writes). */
+  preserveRevision?: boolean;
+}
+
+/** Lightweight metadata for sync comparisons. */
+export async function getPortfolioMeta(prisma: PrismaClient): Promise<PortfolioMeta | null> {
+  const row = await prisma.portfolio.findUnique({
+    where: { id: PORTFOLIO_ID },
+    select: { revision: true, updatedAt: true },
+  });
+  if (!row) return null;
+  return { revision: row.revision, updatedAt: row.updatedAt };
+}
 
 /** Reconstruct the nested Portfolio JSON the frontend expects, from the relational tables. */
 export async function getPortfolio(prisma: PrismaClient): Promise<WirePortfolio | null> {
@@ -98,7 +131,7 @@ export async function getPortfolio(prisma: PrismaClient): Promise<WirePortfolio 
     name: row.name,
     appName: row.appName,
     fiscalYear: row.fiscalYear,
-    calendar: { workingWeekdays: row.calendarWorkdays, holidays: row.calendarHolidays },
+    calendar: { workingWeekdays: readIntArray(row.calendarWorkdays), holidays: readStringArray(row.calendarHolidays) },
     resources: resources.map((r) => ({
       id: r.id,
       name: r.name,
@@ -121,7 +154,16 @@ export async function getPortfolio(prisma: PrismaClient): Promise<WirePortfolio 
       convertedProjectId: d.convertedProjectId ?? undefined,
       gateHistory: (d.gateHistory as WireGateRecord[] | null) ?? undefined,
     })),
-    customFields: customFields.map((f) => ({ id: f.id, name: f.name, type: f.type, options: f.options })),
+    customFields: customFields.map((f) => ({
+      id: f.id,
+      name: f.name,
+      type: f.type,
+      options: readStringArray(f.options),
+    })),
+    governanceEvents: (row.governanceEvents as WireGovernanceEvent[] | null) ?? undefined,
+    surveys: (row.surveys as WireSurveyResponse[] | null) ?? undefined,
+    revision: row.revision,
+    updatedAt: row.updatedAt.toISOString(),
   };
 }
 
@@ -130,7 +172,20 @@ export async function getPortfolio(prisma: PrismaClient): Promise<WirePortfolio 
  * portfolio, then recreate it from the payload. Simple and correct for a
  * single user on a low-frequency autosave; not built for concurrent writers.
  */
-export async function replacePortfolio(prisma: PrismaClient, payload: WirePortfolio): Promise<void> {
+export async function replacePortfolio(
+  prisma: PrismaClient,
+  payload: WirePortfolio,
+  opts: ReplacePortfolioOptions = {},
+): Promise<PortfolioMeta> {
+  const existing = await prisma.portfolio.findUnique({
+    where: { id: PORTFOLIO_ID },
+    select: { revision: true },
+  });
+  const nextRevision = opts.preserveRevision
+    ? (opts.revision ?? existing?.revision ?? 0)
+    : (opts.revision ?? (existing?.revision ?? 0) + 1);
+  const nextUpdatedAt = opts.updatedAt ?? new Date();
+
   await prisma.$transaction(
     async (tx) => {
     await tx.project.deleteMany({ where: { portfolioId: PORTFOLIO_ID } });
@@ -147,6 +202,10 @@ export async function replacePortfolio(prisma: PrismaClient, payload: WirePortfo
         fiscalYear: payload.fiscalYear ?? new Date().getFullYear(),
         calendarWorkdays: payload.calendar.workingWeekdays,
         calendarHolidays: payload.calendar.holidays,
+        revision: nextRevision,
+        updatedAt: nextUpdatedAt,
+        governanceEvents: (payload.governanceEvents ?? []) as unknown as Prisma.InputJsonValue,
+        surveys: (payload.surveys ?? []) as unknown as Prisma.InputJsonValue,
       },
       update: {
         name: payload.name,
@@ -154,6 +213,10 @@ export async function replacePortfolio(prisma: PrismaClient, payload: WirePortfo
         fiscalYear: payload.fiscalYear ?? new Date().getFullYear(),
         calendarWorkdays: payload.calendar.workingWeekdays,
         calendarHolidays: payload.calendar.holidays,
+        revision: nextRevision,
+        updatedAt: nextUpdatedAt,
+        governanceEvents: (payload.governanceEvents ?? []) as unknown as Prisma.InputJsonValue,
+        surveys: (payload.surveys ?? []) as unknown as Prisma.InputJsonValue,
       },
     });
 
@@ -268,4 +331,6 @@ export async function replacePortfolio(prisma: PrismaClient, payload: WirePortfo
     },
     { timeout: 20_000 },
   );
+
+  return { revision: nextRevision, updatedAt: nextUpdatedAt };
 }
