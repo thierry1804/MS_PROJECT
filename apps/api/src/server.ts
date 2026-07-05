@@ -1,7 +1,11 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
-import { prisma } from "./db.js";
+import { prisma, reconnectPrisma } from "./db.js";
 import { getPortfolio, replacePortfolio } from "./portfolio.js";
+import {
+  getDatabaseConfigStatus,
+  writeRuntimeDatabaseConfig,
+} from "./runtime-config.js";
 import type { WirePortfolio } from "./types.js";
 
 interface AuditPayload {
@@ -23,7 +27,7 @@ app.get("/api/health", async () => ({ ok: true }));
 
 app.get("/api/portfolio", async (_req, reply) => {
   const portfolio = await getPortfolio(prisma);
-  if (!portfolio) return reply.code(404).send({ error: "Aucun portefeuille en base. Lancez le seed." });
+  if (!portfolio) return reply.code(404).send({ error: "Aucun portefeuille en base." });
   return portfolio;
 });
 
@@ -58,6 +62,29 @@ app.post("/api/audit", async (req, reply) => {
     },
   });
   return entry;
+});
+
+app.delete("/api/audit", async () => {
+  const { count } = await prisma.auditEntry.deleteMany();
+  return { ok: true, count };
+});
+
+app.get("/api/config/database", async () => getDatabaseConfigStatus());
+
+app.put("/api/config/database", async (req, reply) => {
+  const body = req.body as { databaseUrl?: string; directUrl?: string };
+  const databaseUrl = body?.databaseUrl?.trim();
+  if (!databaseUrl) {
+    return reply.code(400).send({ error: "URL de connexion requise." });
+  }
+  const directUrl = body?.directUrl?.trim() || databaseUrl;
+  writeRuntimeDatabaseConfig({ databaseUrl, directUrl });
+  try {
+    await reconnectPrisma(databaseUrl, directUrl);
+  } catch {
+    return reply.code(400).send({ error: "Connexion impossible avec ces URLs. Vérifiez les identifiants." });
+  }
+  return { ok: true, reconnected: true };
 });
 
 const port = Number(process.env.PORT ?? 8787);

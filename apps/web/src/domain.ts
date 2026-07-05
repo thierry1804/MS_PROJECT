@@ -214,6 +214,10 @@ export interface SurveyResponse {
 
 export interface Portfolio {
   name: string;
+  /** Nom affiché de l'application (sidebar, titre navigateur). */
+  appName?: string;
+  /** Année d'exercice comptable / budgétaire du portefeuille. */
+  fiscalYear?: number;
   calendar: CalendarDef;
   resources: Resource[];
   projects: Project[];
@@ -256,6 +260,16 @@ export function todayISO(): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${dd}`;
+}
+
+/** Objet sidebar : libellé portefeuille + année d'exercice. */
+export function portfolioSidebarLabel(name: string, fiscalYear?: number): string {
+  const year = fiscalYear ?? new Date().getFullYear();
+  const base = name.trim() || "Portefeuille";
+  if (/\d{4}\s*$/.test(base)) {
+    return base.replace(/\s*\d{4}\s*$/, ` ${year}`).trim();
+  }
+  return `${base} ${year}`;
 }
 
 export const EUR = new Intl.NumberFormat("fr-FR", {

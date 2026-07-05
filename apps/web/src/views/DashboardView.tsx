@@ -174,7 +174,7 @@ export function DashboardView() {
           <button
             className="toolbar-btn"
             onClick={() => setConfirmReset(true)}
-            title="Restaurer les données de démonstration"
+            title="Vider le portefeuille"
           >
             Réinitialiser
           </button>
@@ -201,7 +201,7 @@ export function DashboardView() {
       {confirmReset && (
         <ConfirmDialog
           title="Réinitialiser le portefeuille ?"
-          message="Toutes les modifications locales seront perdues et remplacées par les données de démonstration."
+          message="Toutes les données du portefeuille seront supprimées (projets, demandes, ressources, etc.)."
           confirmLabel="Réinitialiser"
           danger
           onCancel={() => setConfirmReset(false)}

@@ -96,6 +96,8 @@ export async function getPortfolio(prisma: PrismaClient): Promise<WirePortfolio 
 
   return {
     name: row.name,
+    appName: row.appName,
+    fiscalYear: row.fiscalYear,
     calendar: { workingWeekdays: row.calendarWorkdays, holidays: row.calendarHolidays },
     resources: resources.map((r) => ({
       id: r.id,
@@ -141,11 +143,15 @@ export async function replacePortfolio(prisma: PrismaClient, payload: WirePortfo
       create: {
         id: PORTFOLIO_ID,
         name: payload.name,
+        appName: payload.appName ?? "Atelier",
+        fiscalYear: payload.fiscalYear ?? new Date().getFullYear(),
         calendarWorkdays: payload.calendar.workingWeekdays,
         calendarHolidays: payload.calendar.holidays,
       },
       update: {
         name: payload.name,
+        appName: payload.appName ?? "Atelier",
+        fiscalYear: payload.fiscalYear ?? new Date().getFullYear(),
         calendarWorkdays: payload.calendar.workingWeekdays,
         calendarHolidays: payload.calendar.holidays,
       },

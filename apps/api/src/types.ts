@@ -110,6 +110,8 @@ export interface WireProject {
 
 export interface WirePortfolio {
   name: string;
+  appName?: string;
+  fiscalYear?: number;
   calendar: { workingWeekdays: number[]; holidays: string[] };
   resources: Resource[];
   projects: WireProject[];

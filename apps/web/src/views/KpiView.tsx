@@ -75,7 +75,8 @@ export function KpiView() {
       <div className="view-header">
         <h1>Pilotage PMO</h1>
         <span className="sub">
-          Indicateurs consolidés du portefeuille — {portfolio.projects.length} projets, calculés au {fmtDate(today, true)}.
+          Indicateurs consolidés du portefeuille — exercice {portfolio.fiscalYear ?? new Date().getFullYear()} ·{" "}
+          {portfolio.projects.length} projets, calculés au {fmtDate(today, true)}.
         </span>
       </div>
 

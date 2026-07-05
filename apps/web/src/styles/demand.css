@@ -206,6 +206,38 @@
   gap: 6px;
   flex-wrap: wrap;
   margin-top: 12px;
+  align-items: center;
+}
+
+.dm-stage-move {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.dm-stage-label {
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  flex-shrink: 0;
+}
+
+.dm-stage-select {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  padding: 5px 8px;
+  border: 1px solid var(--paper-2);
+  border-radius: 5px;
+  background: var(--paper-0);
+  color: var(--ink-1);
+  outline: none;
+}
+
+.dm-stage-select:focus {
+  border-color: var(--accent);
 }
 
 .dm-btn {

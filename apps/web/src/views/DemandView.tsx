@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { GateDialog } from "../components/GateDialog";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import {
   DEMAND_STAGES,
   DEMAND_STAGE_LABELS,
@@ -20,6 +21,11 @@ interface GateTarget {
   stage: DemandStage;
 }
 
+const GATE_TITLES: Partial<Record<DemandStage, string>> = {
+  qualifiee: "Qualifier la demande",
+  approuvee: "Approuver la demande",
+};
+
 function uid() {
   return `dm-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -35,6 +41,7 @@ export function DemandView() {
   const addDemand = useStore((s) => s.addDemand);
   const moveDemand = useStore((s) => s.moveDemand);
   const convertDemand = useStore((s) => s.convertDemand);
+  const deleteDemand = useStore((s) => s.deleteDemand);
   const navigate = useNavigate();
 
   const demands = portfolio.demands ?? [];
@@ -43,6 +50,7 @@ export function DemandView() {
 
   const [showForm, setShowForm] = useState(false);
   const [gateTarget, setGateTarget] = useState<GateTarget | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Demand | null>(null);
 
   const totalPipeline = demands
     .filter((d) => d.stage !== "rejetee")
@@ -85,6 +93,7 @@ export function DemandView() {
                       if (id) navigate(`/projets/${id}`);
                     }}
                     onOpen={d.convertedProjectId ? () => navigate(`/projets/${d.convertedProjectId}`) : undefined}
+                    onDelete={d.stage === "rejetee" ? () => setDeleteTarget(d) : undefined}
                   />
                 ))}
                 {items.length === 0 && <p className="dm-empty">—</p>}
@@ -96,12 +105,26 @@ export function DemandView() {
 
       {gateTarget && (
         <GateDialog
-          title={gateTarget.stage === "qualifiee" ? "Qualifier la demande" : "Approuver la demande"}
+          title={GATE_TITLES[gateTarget.stage] ?? "Valider le changement d'état"}
           criteria={GATE_CRITERIA[gateTarget.stage] ?? []}
           onCancel={() => setGateTarget(null)}
           onConfirm={(info) => {
             moveDemand(gateTarget.demandId, gateTarget.stage, info);
             setGateTarget(null);
+          }}
+        />
+      )}
+
+      {deleteTarget && (
+        <ConfirmDialog
+          title="Supprimer cette demande ?"
+          message={`« ${deleteTarget.title} » sera définitivement retirée du pipeline. Cette action est irréversible.`}
+          confirmLabel="Supprimer"
+          danger
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={() => {
+            deleteDemand(deleteTarget.id);
+            setDeleteTarget(null);
           }}
         />
       )}
@@ -115,15 +138,28 @@ function DemandCard({
   onGate,
   onConvert,
   onOpen,
+  onDelete,
 }: {
   demand: Demand;
   onMove: (stage: DemandStage) => void;
   onGate: (stage: DemandStage) => void;
   onConvert: () => void;
   onOpen?: () => void;
+  onDelete?: () => void;
 }) {
   const p = demandPriority(demand);
   const lastGate = demand.gateHistory?.[demand.gateHistory.length - 1];
+  const otherStages = DEMAND_STAGES.filter((s) => s !== demand.stage);
+  const [stageSelectKey, setStageSelectKey] = useState(0);
+
+  function requestStage(target: DemandStage) {
+    if (GATE_CRITERIA[target]) {
+      onGate(target);
+    } else {
+      onMove(target);
+    }
+  }
+
   return (
     <div className="dm-card">
       <div className="dm-card-top">
@@ -147,30 +183,44 @@ function DemandCard({
         </div>
       )}
       <div className="dm-actions">
-        {demand.stage === "idee" && (
-          <>
-            <button className="dm-btn go" onClick={() => onGate("qualifiee")}>Qualifier ›</button>
-            <button className="dm-btn no" onClick={() => onMove("rejetee")}>Rejeter</button>
-          </>
-        )}
-        {demand.stage === "qualifiee" && (
-          <>
-            <button className="dm-btn go" onClick={() => onGate("approuvee")}>Approuver ›</button>
-            <button className="dm-btn back" onClick={() => onMove("idee")}>‹</button>
-            <button className="dm-btn no" onClick={() => onMove("rejetee")}>Rejeter</button>
-          </>
-        )}
+        <label className="dm-stage-move">
+          <span className="dm-stage-label">État</span>
+          <select
+            key={stageSelectKey}
+            className="dm-stage-select"
+            defaultValue=""
+            aria-label={`Déplacer « ${demand.title} » vers un autre état`}
+            onChange={(e) => {
+              const target = e.target.value as DemandStage;
+              if (!target) return;
+              requestStage(target);
+              setStageSelectKey((k) => k + 1);
+            }}
+          >
+            <option value="" disabled>
+              Déplacer vers…
+            </option>
+            {otherStages.map((stage) => (
+              <option key={stage} value={stage}>
+                {DEMAND_STAGE_LABELS[stage]}
+              </option>
+            ))}
+          </select>
+        </label>
         {demand.stage === "approuvee" &&
           (demand.convertedProjectId ? (
-            <button className="dm-btn open" onClick={onOpen}>Ouvrir le projet ›</button>
+            <button className="dm-btn open" onClick={onOpen}>
+              Ouvrir le projet ›
+            </button>
           ) : (
-            <>
-              <button className="dm-btn convert" onClick={onConvert}>Créer le projet</button>
-              <button className="dm-btn back" onClick={() => onMove("qualifiee")}>‹</button>
-            </>
+            <button className="dm-btn convert" onClick={onConvert}>
+              Créer le projet
+            </button>
           ))}
-        {demand.stage === "rejetee" && (
-          <button className="dm-btn back" onClick={() => onMove("idee")}>Réactiver</button>
+        {onDelete && (
+          <button className="dm-btn no" onClick={onDelete}>
+            Supprimer
+          </button>
         )}
       </div>
     </div>

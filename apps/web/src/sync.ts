@@ -1,6 +1,6 @@
 import type { Portfolio } from "./domain";
 
-/** Null means the database is empty (first ever run): caller should seed it. */
+/** Null means the database is empty (first ever run): caller should persist an initial portfolio. */
 export async function fetchPortfolio(): Promise<Portfolio | null> {
   const res = await fetch("/api/portfolio");
   if (res.status === 404) return null;
@@ -42,6 +42,40 @@ export async function fetchAuditLog(limit = 300): Promise<AuditEntry[]> {
   const res = await fetch(`/api/audit?limit=${limit}`);
   if (!res.ok) throw new Error(`GET /api/audit → ${res.status}`);
   return (await res.json()) as AuditEntry[];
+}
+
+export async function clearAuditLog(): Promise<void> {
+  const res = await fetch("/api/audit", { method: "DELETE" });
+  if (!res.ok) throw new Error(`DELETE /api/audit → ${res.status}`);
+}
+
+export interface DatabaseConfigStatus {
+  source: "env" | "file" | "none";
+  configured: boolean;
+  databaseUrlMasked: string;
+  directUrlMasked: string;
+}
+
+export async function fetchDatabaseConfig(): Promise<DatabaseConfigStatus> {
+  const res = await fetch("/api/config/database");
+  if (!res.ok) throw new Error(`GET /api/config/database → ${res.status}`);
+  return (await res.json()) as DatabaseConfigStatus;
+}
+
+export async function saveDatabaseConfig(config: {
+  databaseUrl: string;
+  directUrl?: string;
+}): Promise<{ reconnected: boolean }> {
+  const res = await fetch("/api/config/database", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(config),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error ?? `PUT /api/config/database → ${res.status}`);
+  }
+  return (await res.json()) as { reconnected: boolean };
 }
 
 /** Best-effort: an audit entry that fails to save must never block the actual edit. */

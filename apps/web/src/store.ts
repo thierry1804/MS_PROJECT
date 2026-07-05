@@ -24,8 +24,20 @@ import type {
   SurveyResponse,
 } from "./domain";
 import { DEMAND_STAGE_LABELS, todayISO } from "./domain";
-import { seedPortfolio } from "./seed";
 import { fetchPortfolio, logAudit, savePortfolio } from "./sync";
+
+const EMPTY_PORTFOLIO: Portfolio = {
+  name: "Portefeuille",
+  appName: "Atelier",
+  fiscalYear: new Date().getFullYear(),
+  calendar: { workingWeekdays: [1, 2, 3, 4, 5], holidays: [] },
+  resources: [],
+  projects: [],
+  demands: [],
+  customFields: [],
+  governanceEvents: [],
+  surveys: [],
+};
 
 const RAID_LABELS: Record<RaidKind, string> = {
   risks: "Risque",
@@ -91,13 +103,17 @@ interface AppState {
   logTime: (projectId: string, taskId: string, resourceId: string, weekStart: string, days: number) => void;
   /** Create a project from the intake form; returns its generated id. */
   createProject: (draft: ProjectDraft) => string;
-  /** Discard all local edits and restore the seed portfolio. */
+  /** Discard all local edits and restore an empty portfolio. */
   resetPortfolio: () => void;
   /** Remove a project entirely from the portfolio. */
   deleteProject: (projectId: string) => void;
   /** Add a new demand to the intake pipeline. */
   addDemand: (demand: Demand) => void;
   updateDemand: (id: string, patch: Partial<Demand>) => void;
+  /** Update application branding and fiscal year settings. */
+  updateAppSettings: (patch: { appName?: string; name?: string; fiscalYear?: number }) => void;
+  /** Permanently remove a rejected demand from the pipeline. */
+  deleteDemand: (id: string) => void;
   /** Move a demand to a pipeline stage. `gate` is set when advancing through a formal stage-gate (records approver + checklist). */
   moveDemand: (id: string, stage: DemandStage, gate?: { approver: string; comment?: string; criteria: string[] }) => void;
   /** Convert an approved demand into an active project; returns the new project id. */
@@ -134,7 +150,7 @@ function slugId(code: string): string {
 }
 
 export const useStore = create<AppState>()((set, get) => ({
-      portfolio: seedPortfolio,
+      portfolio: EMPTY_PORTFOLIO,
       syncStatus: "loading",
       selectedTaskId: null,
       collapsed: {},
@@ -409,8 +425,8 @@ export const useStore = create<AppState>()((set, get) => ({
   },
 
   resetPortfolio: () => {
-    set({ portfolio: structuredClone(seedPortfolio), selectedTaskId: null, collapsed: {} });
-    void logAudit({ entityType: "portfolio", entityId: "default", action: "reset", summary: "Portefeuille réinitialisé aux données de démonstration" });
+    set({ portfolio: structuredClone(EMPTY_PORTFOLIO), selectedTaskId: null, collapsed: {} });
+    void logAudit({ entityType: "portfolio", entityId: "default", action: "reset", summary: "Portefeuille réinitialisé (vide)" });
   },
 
   deleteProject: (projectId) => {
@@ -429,6 +445,9 @@ export const useStore = create<AppState>()((set, get) => ({
   addDemand: (demand) =>
     set((s) => ({ portfolio: { ...s.portfolio, demands: [...(s.portfolio.demands ?? []), demand] } })),
 
+  updateAppSettings: (patch) =>
+    set((s) => ({ portfolio: { ...s.portfolio, ...patch } })),
+
   updateDemand: (id, patch) =>
     set((s) => ({
       portfolio: {
@@ -436,6 +455,23 @@ export const useStore = create<AppState>()((set, get) => ({
         demands: (s.portfolio.demands ?? []).map((d) => (d.id !== id ? d : { ...d, ...patch })),
       },
     })),
+
+  deleteDemand: (id) => {
+    const before = get().portfolio.demands?.find((d) => d.id === id);
+    if (!before || before.stage !== "rejetee") return;
+    set((s) => ({
+      portfolio: {
+        ...s.portfolio,
+        demands: (s.portfolio.demands ?? []).filter((d) => d.id !== id),
+      },
+    }));
+    void logAudit({
+      entityType: "demand",
+      entityId: id,
+      action: "delete",
+      summary: `Demande supprimée : ${before.title}`,
+    });
+  },
 
   addGovernanceEvent: (event) => {
     set((s) => ({
@@ -776,7 +812,7 @@ useStore.subscribe((state, prev) => {
     if (remote) {
       useStore.setState({ portfolio: remote, syncStatus: "saved" });
     } else {
-      // Empty database (first run ever): seed it from the local constant.
+      // Empty database (first run ever): persist the initial empty portfolio.
       await persistNow(useStore.getState().portfolio);
     }
   } catch {

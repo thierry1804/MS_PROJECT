@@ -2,6 +2,34 @@
   padding: 16px 32px 40px;
 }
 
+.audit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.audit-clear-btn {
+  flex-shrink: 0;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  padding: 7px 14px;
+  border: 1px solid var(--paper-2);
+  border-radius: var(--radius);
+  background: var(--paper-0);
+  color: var(--critical);
+  transition: background 150ms var(--ease-out);
+}
+
+.audit-clear-btn:hover:not(:disabled) {
+  background: var(--critical-soft);
+}
+
+.audit-clear-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .audit-search {
   width: 100%;
   max-width: 360px;
@@ -60,12 +88,97 @@
   color: var(--ink-1);
 }
 
+.audit-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--paper-2);
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+
+.audit-page-size {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.audit-page-size select {
+  font-size: var(--fs-xs);
+  padding: 5px 8px;
+  border: 1px solid var(--paper-2);
+  border-radius: var(--radius);
+  background: var(--paper-0);
+  color: var(--ink-0);
+  outline: none;
+}
+
+.audit-page-size select:focus {
+  border-color: var(--accent);
+}
+
+.audit-range {
+  color: var(--ink-2);
+}
+
+.audit-page-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.audit-page-btn {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  padding: 5px 10px;
+  border: 1px solid var(--paper-2);
+  border-radius: var(--radius);
+  background: var(--paper-0);
+  color: var(--ink-1);
+  transition: background 150ms var(--ease-out);
+}
+
+.audit-page-btn:hover:not(:disabled) {
+  background: var(--paper-1);
+}
+
+.audit-page-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.audit-page-indicator {
+  color: var(--ink-2);
+  min-width: 72px;
+  text-align: center;
+}
+
 @media (max-width: 640px) {
   .audit-body {
     padding: 16px 16px 32px;
   }
 
+  .audit-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .audit-row {
     flex-wrap: wrap;
+  }
+
+  .audit-pager {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .audit-page-nav {
+    margin-left: 0;
+    justify-content: space-between;
   }
 }

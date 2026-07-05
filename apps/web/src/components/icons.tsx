@@ -159,3 +159,97 @@ export function DocIcon() {
     </svg>
   );
 }
+
+export function PortfolioNavIcon() {
+  return (
+    <svg {...base}>
+      <rect x="2.5" y="2.5" width="4.5" height="4.5" rx="0.8" stroke="currentColor" strokeWidth="1.2" />
+      <rect x="9" y="2.5" width="4.5" height="4.5" rx="0.8" stroke="currentColor" strokeWidth="1.2" />
+      <rect x="2.5" y="9" width="4.5" height="4.5" rx="0.8" stroke="currentColor" strokeWidth="1.2" />
+      <rect x="9" y="9" width="4.5" height="4.5" rx="0.8" stroke="currentColor" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
+export function KpiNavIcon() {
+  return (
+    <svg {...base}>
+      <path d="M3 13V7M7 13V4M11 13V9M15 13V2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function DemandsNavIcon() {
+  return (
+    <svg {...base}>
+      <path d="M3 3.5h10M3 8h7M3 12.5h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function ResourcesNavIcon() {
+  return (
+    <svg {...base}>
+      <circle cx="5.5" cy="5" r="2" stroke="currentColor" strokeWidth="1.2" />
+      <circle cx="11" cy="5.5" r="1.8" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M2 13c0-2 1.6-3.5 3.5-3.5S9 11 9 13M9.5 13c0-1.6 1.2-2.8 2.5-2.8S14.5 11.4 14.5 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function TimeNavIcon() {
+  return (
+    <svg {...base}>
+      <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M8 4.8V8l2.2 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function RaidNavIcon() {
+  return (
+    <svg {...base}>
+      <path d="M8 2.2 13 4.5v3.8c0 3-2.2 5.8-5 6.5-2.8-.7-5-3.5-5-6.5V4.5z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M8 5.5v3M8 10.2h.01" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function JournalNavIcon() {
+  return (
+    <svg {...base}>
+      <path d="M4 2.5h6.5L12.5 5v8.5h-8.5z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M6.5 8h4M6.5 10.2h2.8" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function SettingsNavIcon() {
+  return (
+    <svg {...base}>
+      <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.2" />
+      <path
+        d="M8 1.8v1.4M8 12.8v1.4M1.8 8h1.4M12.8 8h1.4M3.6 3.6l1 1M11.4 11.4l1 1M3.6 12.4l1-1M11.4 4.6l1-1"
+        stroke="currentColor"
+        strokeWidth="1.1"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+export function ChevronLeftIcon() {
+  return (
+    <svg {...base}>
+      <path d="M10 3.5 5.5 8 10 12.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function ChevronRightIcon() {
+  return (
+    <svg {...base}>
+      <path d="M6 3.5 10.5 8 6 12.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
