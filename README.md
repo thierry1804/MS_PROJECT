@@ -1,4 +1,4 @@
-# Atelier — Portefeuille de projets pour PMO
+# Atelier. Portefeuille de projets pour PMO
 
 Réplique améliorée de MS Project, orientée gestion de portefeuille. Monorepo pnpm : React + Vite côté web, API Fastify + Prisma côté serveur, moteur d'ordonnancement CPM en TypeScript pur.
 
@@ -9,7 +9,7 @@ Réplique améliorée de MS Project, orientée gestion de portefeuille. Monorepo
 | Web | React 19, Vite 6, React Router 7 (hash), Zustand 5, CSS modules par vue |
 | API | Fastify 5, CORS localhost, port 8787 |
 | Données | Prisma 6, PostgreSQL (Neon serverless) |
-| Moteur | `@atelier/scheduling-engine` — CPM, calendriers, EVM, nivellement |
+| Moteur | `@atelier/scheduling-engine`. CPM, calendriers, EVM, nivellement |
 | Langage | TypeScript 5.8, pnpm 10 |
 
 ## Démarrer
@@ -59,9 +59,9 @@ Shell : sidebar repliable, filtre projets, palette de commandes (`Ctrl+K` / `⌘
 - **CPM** : dépendances FS / SS / FF / SF avec lag/lead, contraintes ASAP / SNET / MSO, calendriers ouvrés (jours de semaine + jours fériés), passes avant/arrière, chemin critique, marges totales, WBS hiérarchique avec récapitulatives, détection de cycles.
 - **Calendrier** : conversion index ↔ dates ISO, respect des week-ends et jours chômés.
 - **Coûts** : coût planifié par tâche (affectations × taux journalier × durée + coût fixe) ; ressources `work`, `material`, `cost`.
-- **EVM** : BAC, PV, EV, AC, SPI, CPI, EAC, ETC, SV, CV — PV mesurée à la date du jour.
+- **EVM** : BAC, PV, EV, AC, SPI, CPI, EAC, ETC, SV, CV, PV mesurée à la date du jour.
 - **Charge** : détection des surallocations journalières, matrice de charge par ressource.
-- **Nivellement** : passe heuristique unique — ajoute des contraintes SNET pour décaler les tâches surchargées.
+- **Nivellement** : passe heuristique unique, ajoute des contraintes SNET pour décaler les tâches surchargées.
 - **Tests** : 26 tests Vitest (19 CPM, 3 métriques, 4 nivellement).
 
 ## Fonctionnalités
@@ -77,7 +77,7 @@ Shell : sidebar repliable, filtre projets, palette de commandes (`Ctrl+K` / `⌘
 
 ### Vue projet
 
-- **Grille** éditable en place (nom, durée, % — double-clic) ; colonnes d'écart optionnelles (Δ début/fin, CV %).
+- **Grille** éditable en place (nom, durée, %, double-clic) ; colonnes d'écart optionnelles (Δ début/fin, CV %).
 - **Gantt SVG** synchronisé : barres d'avancement, jalons, récapitulatives, liens orthogonaux, chemin critique en rouge, baseline en pointillés, ligne « aujourd'hui », jours chômés grisés, 3 niveaux de zoom (jour / semaine / mois).
 - **Inspecteur** : contraintes, prédécesseurs (type + lag), affectations ressources, coûts planifié/réel/EV, notes, champs personnalisés.
 - **Édition WBS** : ajout tâche/sous-tâche, indent/outdent (Tab / Maj+Tab), suppression avec sous-arbre.
@@ -136,7 +136,7 @@ Saisie intégrée : événements de gouvernance (comité portefeuille, revue pro
 
 - Nom de l'application, libellé portefeuille, année d'exercice (sidebar + titre navigateur).
 - Connexion Neon : URL pooler + URL directe optionnelle, test et reconnexion Prisma à chaud.
-- Champs personnalisés tâche : texte, nombre, liste de choix — éditables dans l'inspecteur.
+- Champs personnalisés tâche : texte, nombre, liste de choix, éditables dans l'inspecteur.
 
 ## API
 
@@ -173,7 +173,7 @@ Champs portefeuille gérés en JSON côté wire mais non persistés en tables d�
 - Chargement du portefeuille au démarrage (`GET /api/portfolio`).
 - Autosauvegarde debounced à chaque modification (`PUT /api/portfolio`).
 - Statuts affichés dans le shell : chargement, sauvegarde, à jour, erreur, hors ligne.
-- Audit en écriture best-effort (`POST /api/audit`) — une erreur d'audit ne bloque jamais l'édition.
+- Audit en écriture best-effort (`POST /api/audit`), une erreur d'audit ne bloque jamais l'édition.
 
 ## Feuille de route
 
@@ -181,4 +181,4 @@ Champs portefeuille gérés en JSON côté wire mais non persistés en tables d�
 - Collaboration temps réel
 - Authentification et rôles (préalable à une traçabilité « qui » fiable)
 - Calendrier éditable depuis l'UI (aujourd'hui : lun–ven, fériés via seed/config)
-- Script `db:seed` (semis portefeuille démo côté API — à implémenter)
+- Script `db:seed` (semis portefeuille démo côté API, à implémenter)
