@@ -114,6 +114,20 @@ export function ScaleIcon() {
   );
 }
 
+export function UploadIcon() {
+  return (
+    <svg {...base}>
+      <path
+        d="M8 13.5V6.2M4.8 9.4 8 6.2l3.2 3.2M3 2.5h10"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function DownloadIcon() {
   return (
     <svg {...base}>
@@ -121,6 +135,22 @@ export function DownloadIcon() {
         d="M8 2.5v7.3M4.8 7 8 10.2 11.2 7M3 13h10"
         stroke="currentColor"
         strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function ImageIcon() {
+  return (
+    <svg {...base}>
+      <rect x="2.5" y="3.5" width="11" height="9" rx="1.2" stroke="currentColor" strokeWidth="1.3" />
+      <circle cx="5.8" cy="6.8" r="1.2" stroke="currentColor" strokeWidth="1.1" />
+      <path
+        d="M2.8 11.2 5.5 8.5 7.5 10.2 10 7.2 13.2 11.5"
+        stroke="currentColor"
+        strokeWidth="1.2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />

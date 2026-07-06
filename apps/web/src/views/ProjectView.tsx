@@ -10,6 +10,7 @@ import {
   DocIcon,
   DownloadIcon,
   FlagIcon,
+  ImageIcon,
   GapIcon,
   IndentIcon,
   OutdentIcon,
@@ -17,9 +18,14 @@ import {
   ScaleIcon,
   SubtaskIcon,
   TrashIcon,
+  UploadIcon,
 } from "../components/icons";
+import { exportGanttPng } from "../export-gantt";
 import { exportProjectCsv } from "../export";
-import { EUR, fmtDate, todayISO } from "../domain";
+import { parseImportFile } from "../import-file";
+import type { Task } from "@atelier/scheduling-engine";
+import type { Dependency } from "@atelier/scheduling-engine";
+import { EUR, fmtDate, todayISO, type Portfolio, type Project } from "../domain";
 import { buildRange } from "../gantt-utils";
 import { metricsOf, scheduleOf, useStore } from "../store";
 import "../styles/project.css";
@@ -38,6 +44,20 @@ function evmClass(val: number): string {
 export function ProjectView() {
   const { projectId } = useParams();
   const portfolio = useStore((s) => s.portfolio);
+  const project = portfolio.projects.find((p) => p.id === projectId);
+
+  if (!project) {
+    return (
+      <div className="view-header">
+        <h1>Projet introuvable</h1>
+      </div>
+    );
+  }
+
+  return <ProjectViewBody project={project} portfolio={portfolio} />;
+}
+
+function ProjectViewBody({ project, portfolio }: { project: Project; portfolio: Portfolio }) {
   const collapsed = useStore((s) => s.collapsed);
   const selectedTaskId = useStore((s) => s.selectedTaskId);
   const selectTask = useStore((s) => s.selectTask);
@@ -53,22 +73,21 @@ export function ProjectView() {
   const indentTask = useStore((s) => s.indentTask);
   const outdentTask = useStore((s) => s.outdentTask);
   const deleteTask = useStore((s) => s.deleteTask);
+  const importProjectTasks = useStore((s) => s.importProjectTasks);
   const [zoom, setZoom] = useState(1);
   const [showVariance, setShowVariance] = useState(false);
   const [hintSeen, setHintSeen] = useState(() => localStorage.getItem("atelier-hint-seen") === "1");
   const [confirmDeleteTask, setConfirmDeleteTask] = useState(false);
+  const [confirmImport, setConfirmImport] = useState(false);
+  const [pendingImportTasks, setPendingImportTasks] = useState<Task[] | null>(null);
+  const [pendingImportDeps, setPendingImportDeps] = useState<Dependency[] | null>(null);
+  const [importErrors, setImportErrors] = useState<string | null>(null);
+  const [exportingGantt, setExportingGantt] = useState(false);
+
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const gridBodyRef = useRef<HTMLDivElement>(null);
   const ganttHeadRef = useRef<HTMLDivElement>(null);
-
-  const project = portfolio.projects.find((p) => p.id === projectId);
-  if (!project) {
-    return (
-      <div className="view-header">
-        <h1>Projet introuvable</h1>
-      </div>
-    );
-  }
 
   const schedule = scheduleOf(project, portfolio);
   const metrics = metricsOf(project, portfolio);
@@ -108,6 +127,37 @@ export function ProjectView() {
     const el = e.currentTarget;
     if (gridBodyRef.current) gridBodyRef.current.scrollTop = el.scrollTop;
     if (ganttHeadRef.current) ganttHeadRef.current.scrollLeft = el.scrollLeft;
+  }
+
+  async function onImportFile(file: File) {
+    setImportErrors(null);
+    const result = await parseImportFile(file, {
+      projectId: project.id,
+      calendar: portfolio.calendar,
+      projectStart: project.projectStart,
+    });
+    if (result.errors.length > 0) {
+      setImportErrors(
+        result.errors.map((e) => (e.line > 0 ? `Ligne ${e.line} : ${e.message}` : e.message)).join("\n"),
+      );
+      return;
+    }
+    if (project.tasks.length > 0) {
+      setPendingImportTasks(result.tasks);
+      setPendingImportDeps(result.dependencies);
+      setConfirmImport(true);
+      return;
+    }
+    importProjectTasks(project.id, result.tasks, result.dependencies);
+  }
+
+  function applyImport() {
+    if (pendingImportTasks) {
+      importProjectTasks(project.id, pendingImportTasks, pendingImportDeps ?? []);
+    }
+    setPendingImportTasks(null);
+    setPendingImportDeps(null);
+    setConfirmImport(false);
   }
 
   return (
@@ -207,6 +257,26 @@ export function ProjectView() {
           </div>
 
           <div className="tb-cluster" role="group" aria-label="Sortie">
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".csv,.xlsx"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (file) void onImportFile(file);
+              }}
+            />
+            <button
+              className="tb-btn"
+              onClick={() => importInputRef.current?.click()}
+              title="Importer des tâches depuis CSV ou Excel"
+              aria-label="Importer CSV ou Excel"
+            >
+              <UploadIcon />
+              <span className="tb-label tier1">Import</span>
+            </button>
             <button
               className="tb-btn"
               onClick={() => exportProjectCsv(project, schedule, portfolio.resources)}
@@ -215,6 +285,32 @@ export function ProjectView() {
             >
               <DownloadIcon />
               <span className="tb-label tier1">Export CSV</span>
+            </button>
+            <button
+              className="tb-btn"
+              disabled={exportingGantt}
+              onClick={() => {
+                setExportingGantt(true);
+                void exportGanttPng({
+                  project,
+                  schedule,
+                  resources: portfolio.resources,
+                  calendar: portfolio.calendar,
+                  range,
+                  dayWidth: dw,
+                  showVariance,
+                  todayISO: today,
+                })
+                  .catch(() => {
+                    setImportErrors("L'export image du Gantt a échoué. Réessayez ou réduisez le zoom.");
+                  })
+                  .finally(() => setExportingGantt(false));
+              }}
+              title="Exporter le Gantt complet en image PNG (toutes les tâches, timeline entière, zoom min. 14 px/jour)"
+              aria-label="Exporter le Gantt en image"
+            >
+              <ImageIcon />
+              <span className="tb-label tier1">{exportingGantt ? "Export…" : "Export PNG"}</span>
             </button>
             <Link
               className="tb-btn"
@@ -411,6 +507,20 @@ export function ProjectView() {
         )}
       </div>
 
+      {confirmImport && pendingImportTasks && (
+        <ConfirmDialog
+          title="Remplacer les tâches ?"
+          message={`${project.tasks.length} tâche${project.tasks.length > 1 ? "s" : ""} existante${project.tasks.length > 1 ? "s" : ""} seront remplacées par ${pendingImportTasks.length} tâche${pendingImportTasks.length > 1 ? "s" : ""} importée${pendingImportTasks.length > 1 ? "s" : ""}. Les dépendances et feuilles de temps liées seront supprimées.`}
+          confirmLabel="Importer"
+          onCancel={() => {
+            setConfirmImport(false);
+            setPendingImportTasks(null);
+            setPendingImportDeps(null);
+          }}
+          onConfirm={applyImport}
+        />
+      )}
+
       {confirmDeleteTask && selectedTaskId && (
         <ConfirmDialog
           title="Supprimer cette tâche ?"
@@ -423,6 +533,19 @@ export function ProjectView() {
             setConfirmDeleteTask(false);
           }}
         />
+      )}
+
+      {importErrors && (
+        <div className="project-import-error" role="alert">
+          <pre>{importErrors}</pre>
+          <button
+            className="hint-close"
+            onClick={() => setImportErrors(null)}
+            aria-label="Fermer"
+          >
+            ✕
+          </button>
+        </div>
       )}
 
       {!hintSeen && (

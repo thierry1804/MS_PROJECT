@@ -19,6 +19,16 @@ function readStringArray(value: unknown): string[] {
   return Array.isArray(value) ? (value as string[]) : [];
 }
 
+const HOURS_PER_WORKDAY = 8;
+
+/** Restaure les durées décimales tronquées quand la colonne était Int (custom.durationHours conservé). */
+function readTaskDuration(duration: number, custom: unknown): number {
+  if (duration > 0) return duration;
+  const hours = (custom as Record<string, unknown> | null)?.durationHours;
+  if (typeof hours === "number" && hours > 0) return hours / HOURS_PER_WORKDAY;
+  return duration;
+}
+
 export interface ReplacePortfolioOptions {
   /** Preserve explicit revision/updatedAt (sync pull/push). */
   revision?: number;
@@ -78,7 +88,7 @@ export async function getPortfolio(prisma: PrismaClient): Promise<WirePortfolio 
         name: t.name,
         parentId: t.parentId,
         order: t.order,
-        duration: t.duration,
+        duration: readTaskDuration(t.duration, t.custom),
         percentComplete: t.percentComplete,
         constraint: t.constraintType
           ? { type: t.constraintType as ConstraintType, date: t.constraintDate ?? undefined }

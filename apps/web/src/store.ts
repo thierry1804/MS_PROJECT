@@ -148,6 +148,8 @@ interface AppState {
   outdentTask: (projectId: string, taskId: string) => void;
   /** Delete a task and its whole subtree, plus any dependency touching them. */
   deleteTask: (projectId: string, taskId: string) => void;
+  /** Replace all project tasks (and dependencies) from an imported file. */
+  importProjectTasks: (projectId: string, tasks: Task[], dependencies?: Dependency[]) => void;
   /** Retry a failed autosave with the current in-memory portfolio. */
   retrySync: () => void;
 }
@@ -780,6 +782,35 @@ export const useStore = create<AppState>()((set, get) => ({
         summary: `Tâche supprimée : « ${task.name} »${extra > 0 ? ` (+${extra} sous-tâche${extra > 1 ? "s" : ""})` : ""}`,
       });
     }
+  },
+
+  importProjectTasks: (projectId, tasks, dependencies = []) => {
+    const project = get().portfolio.projects.find((p) => p.id === projectId);
+    if (!project) return;
+    const taskIds = new Set(tasks.map((t) => t.id));
+    set((s) => ({
+      selectedTaskId: s.selectedTaskId && taskIds.has(s.selectedTaskId) ? s.selectedTaskId : null,
+      collapsed: {},
+      portfolio: {
+        ...s.portfolio,
+        projects: s.portfolio.projects.map((p) =>
+          p.id !== projectId
+            ? p
+            : {
+                ...p,
+                tasks,
+                dependencies,
+                timesheets: (p.timesheets ?? []).filter((e) => taskIds.has(e.taskId)),
+              },
+        ),
+      },
+    }));
+    void logAudit({
+      entityType: "project",
+      entityId: projectId,
+      action: "update",
+      summary: `Import de ${tasks.length} tâches dans « ${project.name} »`,
+    });
   },
 
   retrySync: () => {

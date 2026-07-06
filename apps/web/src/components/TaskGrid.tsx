@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { taskPlannedCost, type Resource, type ScheduleResult, type Task } from "@atelier/scheduling-engine";
+import { durationCustomFields, formatTaskDuration } from "../duration";
 import { fmtDate } from "../domain";
 import type { Project } from "../domain";
 
@@ -92,7 +93,12 @@ export function TaskGrid({
     }
     const n = Number(raw.replace(",", "."));
     if (!Number.isFinite(n)) return;
-    if (field === "duration" && n >= 0 && n !== task.duration) onUpdate(task.id, { duration: Math.round(n) });
+    if (field === "duration" && n >= 0 && n !== task.duration) {
+      onUpdate(task.id, {
+        duration: n,
+        custom: { ...task.custom, ...durationCustomFields(n) },
+      });
+    }
     if (field === "percentComplete") {
       const pct = Math.max(0, Math.min(100, Math.round(n)));
       if (pct !== task.percentComplete) onUpdate(task.id, { percentComplete: pct });
@@ -198,7 +204,7 @@ export function TaskGrid({
                   />
                 ) : (
                   <span onDoubleClick={() => setEdit({ taskId: id, field: "duration" })}>
-                    {task.duration} j
+                    {formatTaskDuration(task)}
                   </span>
                 )}
               </td>

@@ -151,6 +151,58 @@
   color: var(--paper-0);
 }
 
+/* ---------- Gantt PNG export (off-screen snapshot) ---------- */
+.gantt-export-frame {
+  display: inline-flex;
+  flex-direction: column;
+  background: var(--paper-0);
+  color: var(--ink-0);
+  font-family: var(--font);
+}
+
+.gantt-export-title {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--paper-2);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+
+.gantt-export-meta {
+  font-size: var(--fs-sm);
+  font-weight: 400;
+  color: var(--ink-2);
+}
+
+.gantt-export-split {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+}
+
+.gantt-export-frame .grid-pane,
+.gantt-export-frame .gantt-export-grid {
+  overflow: visible;
+  flex-shrink: 0;
+}
+
+.gantt-export-frame .gantt-pane,
+.gantt-export-frame .gantt-export-timeline {
+  overflow: visible;
+  flex-shrink: 0;
+  min-width: unset;
+}
+
+.gantt-export-frame .gantt-head {
+  overflow: visible;
+}
+
+.gantt-export-frame .gantt-body {
+  overflow: visible;
+}
+
 /* ---------- Split ---------- */
 .project-split {
   flex: 1;
@@ -351,6 +403,24 @@
 
 .bar-group {
   cursor: pointer;
+}
+
+.project-import-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 16px 8px 32px;
+  border-top: 1px solid var(--critical);
+  font-size: var(--fs-xs);
+  color: var(--critical);
+  flex-shrink: 0;
+  background: var(--paper-1);
+}
+
+.project-import-error pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: inherit;
 }
 
 .project-hint {

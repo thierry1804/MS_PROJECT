@@ -1,0 +1,117 @@
+.error-page {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.error-page--standalone {
+  min-height: 100%;
+  background: var(--paper-0);
+}
+
+.error-card {
+  width: min(440px, 100%);
+  padding: 28px 28px 24px;
+  background: var(--paper-1);
+  border: 1px solid var(--paper-2);
+  border-radius: var(--radius);
+}
+
+.error-kicker {
+  margin: 0 0 8px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--critical);
+}
+
+.error-title {
+  margin: 0 0 10px;
+  font-size: var(--fs-2xl);
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+.error-message {
+  margin: 0;
+  font-size: var(--fs-md);
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+
+.error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.error-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 14px;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  border: 1px solid var(--paper-2);
+  border-radius: var(--radius);
+  color: var(--ink-1);
+  background: var(--paper-0);
+  text-decoration: none;
+  transition: background 120ms var(--ease-out), border-color 120ms var(--ease-out);
+}
+
+.error-btn:hover {
+  background: var(--paper-2);
+  color: var(--ink-0);
+}
+
+.error-btn--primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: oklch(0.99 0.005 255);
+}
+
+.error-btn--primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: oklch(0.99 0.005 255);
+}
+
+.error-details {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--paper-2);
+}
+
+.error-details summary {
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.error-details summary:hover {
+  color: var(--ink-1);
+}
+
+.error-details pre {
+  margin: 12px 0 0;
+  padding: 12px;
+  max-height: 220px;
+  overflow: auto;
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  color: var(--ink-1);
+  background: var(--paper-0);
+  border: 1px solid var(--paper-2);
+  border-radius: var(--radius);
+  white-space: pre-wrap;
+  word-break: break-word;
+}

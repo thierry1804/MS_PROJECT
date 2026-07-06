@@ -89,7 +89,7 @@ model Task {
   name            String
   parentId        String? @map("parent_id")
   order           Int     @map("task_order")
-  duration        Int
+  duration        Float
   percentComplete Int     @map("percent_complete")
   constraintType  String? @map("constraint_type")
   constraintDate  String? @map("constraint_date")

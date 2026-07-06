@@ -10,12 +10,30 @@ export interface RuntimeDatabaseConfig {
   directUrl?: string;
 }
 
+/**
+ * Neon/PgBouncer pooler URLs need `pgbouncer=true` so Prisma skips prepared
+ * statements. Without it, DDL changes (e.g. Int → Float) trigger
+ * "cached plan must not change result type" on long-lived connections.
+ */
+export function normalizePooledDatabaseUrl(url: string): string {
+  if (!url.includes("-pooler")) return url;
+  try {
+    const parsed = new URL(url);
+    if (!parsed.searchParams.has("pgbouncer")) parsed.searchParams.set("pgbouncer", "true");
+    return parsed.toString();
+  } catch {
+    return url.includes("pgbouncer=") ? url : `${url}${url.includes("?") ? "&" : "?"}pgbouncer=true`;
+  }
+}
+
 /** Apply file-based DB URLs before PrismaClient is constructed. UI config overrides .env when present. */
 export function applyRuntimeDatabaseConfig(): void {
   const file = readRuntimeDatabaseConfig();
   if (file?.databaseUrl) {
-    process.env.DATABASE_URL = file.databaseUrl;
+    process.env.DATABASE_URL = normalizePooledDatabaseUrl(file.databaseUrl);
     process.env.DIRECT_URL = file.directUrl ?? file.databaseUrl;
+  } else if (process.env.DATABASE_URL) {
+    process.env.DATABASE_URL = normalizePooledDatabaseUrl(process.env.DATABASE_URL);
   }
 }
 

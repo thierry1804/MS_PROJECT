@@ -105,7 +105,9 @@ Shell : sidebar repliable, filtre projets, palette de commandes (`Ctrl+K` / `⌘
 - **Baseline** : capture instantanée dates + coûts planifiés de toutes les tâches feuilles.
 - **Nivellement** : résorption automatique des surcharges (contraintes SNET).
 - **Bandeau EVM** : BAC, PV, EV, AC, SPI, CPI, EAC, ETC.
-- Export CSV Excel-friendly (UTF-8 BOM, séparateur `;`), lien vers rapport flash.
+- Export CSV Excel-friendly (UTF-8 BOM, séparateur `;`), **import CSV / Excel** (`.csv`, `.xlsx`), lien vers rapport flash.
+
+**Import de tâches** — colonnes attendues : `WBS`, `Type`, `Nom`, `Durée (j)`, `Début`, `Fin`. Types : `Groupement`, `Tâche`, `Jalon`. Hiérarchie via WBS (`1`, `1.1`, …). Depuis Excel : enregistrer en CSV UTF-8 (délimité par `;`) ou déposer le fichier `.xlsx` directement. L'import remplace toutes les tâches existantes (confirmation si le projet n'est pas vide).
 
 Toute édition recalcule le planning en direct côté client.
 
