@@ -106,7 +106,8 @@
 }
 
 .modal-field input,
-.modal-field textarea {
+.modal-field textarea,
+.modal-field select {
   font-size: var(--fs-md);
   font-family: inherit;
   padding: 8px 10px;
@@ -118,8 +119,34 @@
   width: 100%;
 }
 
+.modal-field select {
+  cursor: pointer;
+}
+
+.modal.modal-demand {
+  max-width: 580px;
+}
+
+.modal-prio-preview {
+  flex: 0 0 88px;
+}
+
+.modal-prio-value {
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--paper-2);
+  border-radius: 6px;
+  background: var(--paper-1);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--ink-0);
+}
+
 .modal-field input:focus,
-.modal-field textarea:focus {
+.modal-field textarea:focus,
+.modal-field select:focus {
   border-color: var(--accent);
 }
 
