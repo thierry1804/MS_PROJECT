@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { HealthBadge, ProgressBar, StatusBadge } from "../components/badges";
+import { HealthBadge, ProgressBar, StatusSelect } from "../components/badges";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { NewProjectModal } from "../components/NewProjectModal";
 import { TrashIcon } from "../components/icons";
@@ -45,6 +45,7 @@ interface UpcomingMilestone {
 export function DashboardView() {
   const portfolio = useStore((s) => s.portfolio);
   const createProject = useStore((s) => s.createProject);
+  const updateProject = useStore((s) => s.updateProject);
   const resetPortfolio = useStore((s) => s.resetPortfolio);
   const deleteProject = useStore((s) => s.deleteProject);
   const navigate = useNavigate();
@@ -311,7 +312,10 @@ export function DashboardView() {
                     <td className="strong">{project.name}</td>
                     <td>{project.manager}</td>
                     <td>
-                      <StatusBadge status={project.status} />
+                      <StatusSelect
+                        status={project.status}
+                        onChange={(status) => updateProject(project.id, { status })}
+                      />
                     </td>
                     <td>
                       <HealthBadge health={project.health} />

@@ -485,6 +485,101 @@ select {
 .badge.neutral { background: var(--paper-2); color: var(--ink-2); }
 .badge.neutral .dot { background: var(--ink-3); }
 
+.status-select {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+.status-select-trigger {
+  border: none;
+  cursor: pointer;
+  padding-right: 18px;
+  gap: 6px;
+}
+
+.status-select-trigger:hover {
+  filter: brightness(0.97);
+}
+
+.status-select-trigger:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.status-select-label {
+  white-space: nowrap;
+}
+
+.status-select-caret {
+  width: 0;
+  height: 0;
+  margin-left: 2px;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  border-top: 4px solid currentColor;
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+
+.status-select.open .status-select-caret {
+  transform: rotate(180deg);
+  opacity: 0.75;
+}
+
+.status-select-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 40;
+  min-width: 148px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--paper-0);
+  border: 1px solid var(--paper-2);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.status-select-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--ink-1);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.status-select-option:hover {
+  background: var(--paper-1);
+  color: var(--ink-0);
+}
+
+.status-select-option.selected {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.status-select-option .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-select-option .dot.ok { background: var(--ok); }
+.status-select-option .dot.warn { background: var(--warn); }
+.status-select-option .dot.danger { background: var(--critical); }
+.status-select-option .dot.neutral { background: var(--ink-3); }
+
 /* ---------- Progress ---------- */
 .progress {
   height: 4px;

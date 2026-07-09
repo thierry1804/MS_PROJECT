@@ -23,7 +23,7 @@ import type {
   RaidKind,
   SurveyResponse,
 } from "./domain";
-import { DEMAND_STAGE_LABELS, todayISO } from "./domain";
+import { DEMAND_STAGE_LABELS, HEALTH_LABELS, STATUS_LABELS, todayISO } from "./domain";
 import { fetchPortfolio, fetchCloudSyncStatus, logAudit, savePortfolio, triggerSyncNow } from "./sync";
 
 const EMPTY_PORTFOLIO: Portfolio = {
@@ -93,6 +93,8 @@ interface AppState {
   selectTask: (id: string | null) => void;
   toggleCollapse: (taskId: string) => void;
   updateTask: (projectId: string, taskId: string, patch: Partial<Task>) => void;
+  /** Patch project-level fields (status, health, manager, …). */
+  updateProject: (projectId: string, patch: Partial<Pick<Project, "status" | "health" | "manager" | "name" | "description" | "budget" | "projectStart" | "strategicAxis">>) => void;
   /** Snapshot current schedule dates + planned costs into task.baseline fields. */
   captureBaseline: (projectId: string) => void;
   /** Set task.actualCost (from timesheets / manual entry). */
@@ -161,6 +163,14 @@ function slugId(code: string): string {
   return `${base}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
+/** Promote cadrage → en-cours when start date is reached or any task has progress. */
+function maybePromoteToEnCours(project: Project): Project {
+  if (project.status !== "cadrage") return project;
+  if (project.projectStart <= todayISO()) return { ...project, status: "en-cours" };
+  if (project.tasks.some((t) => t.percentComplete > 0)) return { ...project, status: "en-cours" };
+  return project;
+}
+
 export const useStore = create<AppState>()((set, get) => ({
       portfolio: EMPTY_PORTFOLIO,
       syncStatus: "loading",
@@ -177,11 +187,11 @@ export const useStore = create<AppState>()((set, get) => ({
     set((s) => ({
       portfolio: {
         ...s.portfolio,
-        projects: s.portfolio.projects.map((p) =>
-          p.id !== projectId
-            ? p
-            : { ...p, tasks: p.tasks.map((t) => (t.id !== taskId ? t : { ...t, ...patch })) },
-        ),
+        projects: s.portfolio.projects.map((p) => {
+          if (p.id !== projectId) return p;
+          const updated = { ...p, tasks: p.tasks.map((t) => (t.id !== taskId ? t : { ...t, ...patch })) };
+          return maybePromoteToEnCours(updated);
+        }),
       },
     }));
     if (before) {
@@ -189,6 +199,37 @@ export const useStore = create<AppState>()((set, get) => ({
       if (summary) {
         void logAudit({ entityType: "task", entityId: taskId, action: "update", summary: `Tâche « ${before.name} » : ${summary}` });
       }
+    }
+  },
+
+  updateProject: (projectId, patch) => {
+    const before = get().portfolio.projects.find((p) => p.id === projectId);
+    if (!before) return;
+    set((s) => ({
+      portfolio: {
+        ...s.portfolio,
+        projects: s.portfolio.projects.map((p) => {
+          if (p.id !== projectId) return p;
+          const updated = { ...p, ...patch };
+          // Manual status wins; only auto-promote when status was not explicitly set.
+          return "status" in patch ? updated : maybePromoteToEnCours(updated);
+        }),
+      },
+    }));
+    const parts: string[] = [];
+    if (patch.status && patch.status !== before.status) {
+      parts.push(`statut : ${STATUS_LABELS[before.status]} → ${STATUS_LABELS[patch.status]}`);
+    }
+    if (patch.health && patch.health !== before.health) {
+      parts.push(`santé : ${HEALTH_LABELS[before.health]} → ${HEALTH_LABELS[patch.health]}`);
+    }
+    if (parts.length) {
+      void logAudit({
+        entityType: "project",
+        entityId: projectId,
+        action: "update",
+        summary: `Projet « ${before.name} » : ${parts.join(", ")}`,
+      });
     }
   },
 
@@ -414,7 +455,7 @@ export const useStore = create<AppState>()((set, get) => ({
 
   createProject: (draft) => {
     const id = slugId(draft.code);
-    const project: Project = {
+    const project: Project = maybePromoteToEnCours({
       id,
       code: draft.code.trim().toUpperCase() || "NEW",
       name: draft.name.trim() || "Nouveau projet",
@@ -430,7 +471,7 @@ export const useStore = create<AppState>()((set, get) => ({
       actions: [],
       issues: [],
       decisions: [],
-    };
+    });
     set((s) => ({ portfolio: { ...s.portfolio, projects: [...s.portfolio.projects, project] } }));
     void logAudit({ entityType: "project", entityId: id, action: "create", summary: `Projet créé : ${project.name} (${project.code})` });
     return id;
@@ -581,7 +622,7 @@ export const useStore = create<AppState>()((set, get) => ({
     const demand = get().portfolio.demands?.find((d) => d.id === id);
     if (!demand || demand.convertedProjectId) return demand?.convertedProjectId ?? null;
     const projectId = slugId(demand.title.slice(0, 8));
-    const project: Project = {
+    const project: Project = maybePromoteToEnCours({
       id: projectId,
       code: demand.title.slice(0, 3).toUpperCase(),
       name: demand.title,
@@ -597,7 +638,7 @@ export const useStore = create<AppState>()((set, get) => ({
       actions: [],
       issues: [],
       decisions: [],
-    };
+    });
     set((s) => ({
       portfolio: {
         ...s.portfolio,
@@ -837,12 +878,12 @@ export const useStore = create<AppState>()((set, get) => ({
         projects: s.portfolio.projects.map((p) =>
           p.id !== projectId
             ? p
-            : {
+            : maybePromoteToEnCours({
                 ...p,
                 tasks,
                 dependencies,
                 timesheets: (p.timesheets ?? []).filter((e) => taskIds.has(e.taskId)),
-              },
+              }),
         ),
       },
     }));
@@ -907,14 +948,19 @@ useStore.subscribe((state, prev) => {
   try {
     const remote = await fetchPortfolio();
     if (remote) {
-      useStore.setState({ portfolio: remote, syncStatus: "saved" });
+      const projects = remote.projects.map(maybePromoteToEnCours);
+      const changed = projects.some((p, i) => p !== remote.projects[i]);
+      const portfolio = changed ? { ...remote, projects } : remote;
+      useStore.setState({ portfolio, syncStatus: "saved" });
+      hydrated = true;
+      if (changed) scheduleSave(portfolio);
     } else {
       await persistNow(useStore.getState().portfolio);
+      hydrated = true;
     }
     await refreshCloudSyncStatus();
   } catch {
     useStore.setState({ syncStatus: "offline" });
-  } finally {
     hydrated = true;
   }
 })();

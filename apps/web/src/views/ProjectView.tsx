@@ -5,7 +5,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Gantt, GanttHeader } from "../components/Gantt";
 import { TaskGrid } from "../components/TaskGrid";
 import { TaskInspector } from "../components/TaskInspector";
-import { HealthBadge, StatusBadge } from "../components/badges";
+import { HealthBadge, StatusSelect } from "../components/badges";
 import {
   DocIcon,
   DownloadIcon,
@@ -63,6 +63,7 @@ function ProjectViewBody({ project, portfolio }: { project: Project; portfolio: 
   const selectTask = useStore((s) => s.selectTask);
   const toggleCollapse = useStore((s) => s.toggleCollapse);
   const updateTask = useStore((s) => s.updateTask);
+  const updateProject = useStore((s) => s.updateProject);
   const updateActualCost = useStore((s) => s.updateActualCost);
   const addDependency = useStore((s) => s.addDependency);
   const removeDependency = useStore((s) => s.removeDependency);
@@ -167,7 +168,10 @@ function ProjectViewBody({ project, portfolio }: { project: Project; portfolio: 
         <div className="project-title-row">
           <h1>{project.name}</h1>
           <span className="project-code tnum">{project.code}</span>
-          <StatusBadge status={project.status} />
+          <StatusSelect
+            status={project.status}
+            onChange={(status) => updateProject(project.id, { status })}
+          />
           <HealthBadge health={project.health} />
         </div>
 
