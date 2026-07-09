@@ -30,7 +30,8 @@ async function resolveCloudClient(): Promise<PgPrismaClient | null> {
 
   try {
     return await connectCloudPrisma(state.cloudDatabaseUrl, state.cloudDirectUrl ?? undefined);
-  } catch {
+  } catch (err) {
+    console.error("[sync] cloud connect failed:", err instanceof Error ? err.message : err);
     return null;
   }
 }

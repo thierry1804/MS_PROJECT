@@ -1,4 +1,5 @@
 import type { Portfolio } from "./domain";
+import type { RiskAssistRequest, RiskAssistResponse } from "./risk-assist/types";
 
 /** Null means the database is empty (first ever run): caller should persist an initial portfolio. */
 export async function fetchPortfolio(): Promise<Portfolio | null> {
@@ -23,7 +24,10 @@ export async function savePortfolio(portfolio: Portfolio): Promise<void> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(wire),
   });
-  if (!res.ok) throw new Error(`PUT /api/portfolio → ${res.status}`);
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error ?? `PUT /api/portfolio → ${res.status}`);
+  }
 }
 
 export interface AuditEntry {
@@ -122,6 +126,60 @@ export async function triggerSyncNow(): Promise<void> {
 export async function dismissSyncConflict(): Promise<void> {
   const res = await fetch("/api/sync/dismiss-conflict", { method: "POST" });
   if (!res.ok) throw new Error(`POST /api/sync/dismiss-conflict → ${res.status}`);
+}
+
+export type AiPreset = "openrouter" | "openai" | "custom";
+
+export interface AiConfigStatus {
+  configured: boolean;
+  preset: AiPreset;
+  baseUrl: string;
+  model: string;
+  apiKeyMasked: string;
+  source: "file" | "env" | "none";
+}
+
+export async function fetchAiConfig(): Promise<AiConfigStatus> {
+  const res = await fetch("/api/config/ai");
+  if (!res.ok) throw new Error(`GET /api/config/ai → ${res.status}`);
+  return (await res.json()) as AiConfigStatus;
+}
+
+export async function saveAiConfig(config: {
+  preset?: AiPreset;
+  apiKey?: string;
+  baseUrl?: string;
+  model?: string;
+}): Promise<AiConfigStatus> {
+  const res = await fetch("/api/config/ai", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(config),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error ?? `PUT /api/config/ai → ${res.status}`);
+  }
+  return (await res.json()) as AiConfigStatus;
+}
+
+export async function testAiConfig(): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch("/api/config/ai/test", { method: "POST" });
+  if (!res.ok) throw new Error(`POST /api/config/ai/test → ${res.status}`);
+  return (await res.json()) as { ok: boolean; error?: string };
+}
+
+export async function fetchRiskAssist(payload: RiskAssistRequest): Promise<RiskAssistResponse> {
+  const res = await fetch("/api/risk-assist", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error ?? `POST /api/risk-assist → ${res.status}`);
+  }
+  return (await res.json()) as RiskAssistResponse;
 }
 
 /** Best-effort: an audit entry that fails to save must never block the actual edit. */

@@ -137,15 +137,21 @@ model Dependency {
 }
 
 model Risk {
-  id          String  @id
-  projectId   String  @map("project_id")
-  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  label       String
-  probability Int
-  impact      Int
-  owner       String
-  status      String
-  mitigation  String?
+  id                  String  @id
+  projectId           String  @map("project_id")
+  project             Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  label               String
+  probability         Int
+  impact              Int
+  owner               String
+  status              String
+  mitigation          String?
+  category            String?
+  strategy            String?
+  triggers            Json?
+  residualProbability Int?    @map("residual_probability")
+  residualImpact      Int?    @map("residual_impact")
+  assessment          Json?
 
   @@index([projectId])
   @@map("risk")

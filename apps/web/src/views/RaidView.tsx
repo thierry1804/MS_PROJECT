@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { RiskAssistWizard } from "../components/RiskAssistWizard";
 import {
   ACTION_STATUS_LABELS,
   fmtDate,
@@ -33,6 +34,7 @@ export function RaidView() {
   const today = todayISO();
 
   const [filter, setFilter] = useState<string>("all");
+  const [showAssist, setShowAssist] = useState(false);
   const projects = useMemo(
     () => (filter === "all" ? portfolio.projects : portfolio.projects.filter((p) => p.id === filter)),
     [portfolio.projects, filter],
@@ -136,11 +138,20 @@ export function RaidView() {
         </section>
 
         {/* ---------------- Risques ---------------- */}
-        <RegisterSection title="Risques" count={risks.length}>
+        <RegisterSection
+          title="Risques"
+          count={risks.length}
+          action={
+            <button type="button" className="raid-assist-btn" onClick={() => setShowAssist(true)}>
+              Assistant risque
+            </button>
+          }
+        >
           <table className="raid-table">
             <thead>
               <tr>
                 <th>Risque</th>
+                <th className="c">Catégorie</th>
                 <th className="c">Projet</th>
                 <th className="c">P</th>
                 <th className="c">I</th>
@@ -154,9 +165,11 @@ export function RaidView() {
             <tbody>
               {risks.map(({ project, item }) => {
                 const score = item.probability * item.impact;
+                const rationale = item.assessment?.last.rationale;
                 return (
                   <tr key={item.id} className={item.status === "traite" ? "done" : ""}>
-                    <td>{item.label}</td>
+                    <td title={rationale}>{item.label}</td>
+                    <td className="c muted">{item.category ?? "—"}</td>
                     <td className="c code-cell tnum">{project.code}</td>
                     <td className="c tnum">{item.probability}</td>
                     <td className="c tnum">{item.impact}</td>
@@ -187,6 +200,14 @@ export function RaidView() {
           </table>
           <AddRisk projectId={targetProjectId} onAdd={(r) => targetProjectId && addRaidItem(targetProjectId, "risks", r)} />
         </RegisterSection>
+
+        {showAssist && (
+          <RiskAssistWizard
+            portfolio={portfolio}
+            defaultProjectId={targetProjectId}
+            onClose={() => setShowAssist(false)}
+          />
+        )}
 
         {/* ---------------- Actions ---------------- */}
         <RegisterSection title="Actions" count={actions.length}>
@@ -339,12 +360,25 @@ function Kpi({ label, value, tone }: { label: string; value: number; tone?: "ok"
   );
 }
 
-function RegisterSection({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
+function RegisterSection({
+  title,
+  count,
+  action,
+  children,
+}: {
+  title: string;
+  count: number;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <section className="raid-register">
-      <h2>
-        {title} <span className="raid-count tnum">{count}</span>
-      </h2>
+      <div className="raid-section-head">
+        <h2>
+          {title} <span className="raid-count tnum">{count}</span>
+        </h2>
+        {action}
+      </div>
       {children}
     </section>
   );

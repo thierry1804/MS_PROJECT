@@ -147,6 +147,7 @@ Saisie intégrée : événements de gouvernance (comité portefeuille, revue pro
 
 - Consolidation portefeuille : risques (score P×I), actions (cycle à faire → en cours → fait), problèmes (gravité, time-to-resolution), décisions.
 - Filtre par projet, KPI de synthèse, CRUD par registre.
+- **Assistant risque** : analyse heuristique du contexte projet (CPI, retards, charge, issues) + enrichissement LLM optionnel (OpenRouter / OpenAI-compatible). Wizard en 4 étapes : entrée minimale, propositions, affinage adaptatif, validation avec création d'actions liées.
 
 ### Journal d'activité
 
@@ -159,6 +160,7 @@ Saisie intégrée : événements de gouvernance (comité portefeuille, revue pro
 
 - Nom de l'application, libellé portefeuille, année d'exercice (sidebar + titre navigateur).
 - Connexion Neon : URL pooler + URL directe optionnelle, test et reconnexion Prisma à chaud.
+- **Assistant IA** : clé API OpenRouter, modèle gratuit recommandé (`gpt-oss-120b:free`). Fallback heuristique si non configuré.
 - Champs personnalisés tâche : texte, nombre, liste de choix, éditables dans l'inspecteur.
 
 ## API
@@ -173,8 +175,12 @@ Saisie intégrée : événements de gouvernance (comité portefeuille, revue pro
 | DELETE | `/api/audit` | Purger le journal |
 | GET | `/api/config/database` | Statut connexion (source, URLs masquées) |
 | PUT | `/api/config/database` | Enregistrer URLs Neon + reconnecter Prisma |
+| GET | `/api/config/ai` | Statut assistant IA (clé masquée, modèle) |
+| PUT | `/api/config/ai` | Enregistrer clé / URL / modèle IA |
+| POST | `/api/config/ai/test` | Tester la connectivité LLM |
+| POST | `/api/risk-assist` | Analyse et enrichissement des risques proposés |
 
-Config runtime DB persistée dans `apps/api/data/runtime-config.json` (prioritaire sur `.env`).
+Config runtime DB et IA persistées dans `apps/api/data/runtime-config.json` (prioritaire sur `.env`).
 
 ## Modèle de données (Prisma)
 

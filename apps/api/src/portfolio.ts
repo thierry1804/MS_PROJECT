@@ -6,6 +6,7 @@ import type {
   WireGovernanceEvent,
   WirePortfolio,
   WireProject,
+  WireRiskAssessment,
   WireSurveyResponse,
 } from "./types.js";
 
@@ -110,15 +111,31 @@ export async function getPortfolio(prisma: PrismaClient): Promise<WirePortfolio 
       type: d.type as DependencyType,
       lag: d.lag,
     })),
-    risks: p.risks.map((r) => ({
-      id: r.id,
-      label: r.label,
-      probability: r.probability,
-      impact: r.impact,
-      owner: r.owner,
-      status: r.status,
-      mitigation: r.mitigation ?? undefined,
-    })),
+    risks: p.risks.map((r) => {
+      const row = r as typeof r & {
+        category?: string | null;
+        strategy?: string | null;
+        triggers?: unknown;
+        residualProbability?: number | null;
+        residualImpact?: number | null;
+        assessment?: unknown;
+      };
+      return {
+      id: row.id,
+      label: row.label,
+      probability: row.probability,
+      impact: row.impact,
+      owner: row.owner,
+      status: row.status,
+      mitigation: row.mitigation ?? undefined,
+      category: row.category ?? undefined,
+      strategy: row.strategy ?? undefined,
+      triggers: readStringArray(row.triggers),
+      residualProbability: row.residualProbability ?? undefined,
+      residualImpact: row.residualImpact ?? undefined,
+      assessment: (row.assessment as WireRiskAssessment | null) ?? undefined,
+    };
+    }),
     actions: p.actions.map((a) => ({ id: a.id, label: a.label, owner: a.owner, dueDate: a.dueDate, status: a.status })),
     issues: p.issues.map((i) => ({ id: i.id, label: i.label, owner: i.owner, severity: i.severity, status: i.status })),
     decisions: p.decisions.map((d) => ({
@@ -304,7 +321,22 @@ export async function replacePortfolio(
     if (allDeps.length > 0) await tx.dependency.createMany({ data: allDeps });
 
     const allRisks = payload.projects.flatMap((p) =>
-      p.risks.map((r) => ({ ...r, projectId: p.id, mitigation: r.mitigation ?? null })),
+      p.risks.map((r) => ({
+        id: r.id,
+        projectId: p.id,
+        label: r.label,
+        probability: r.probability,
+        impact: r.impact,
+        owner: r.owner,
+        status: r.status,
+        mitigation: r.mitigation ?? null,
+        category: r.category ?? null,
+        strategy: r.strategy ?? null,
+        triggers: r.triggers?.length ? r.triggers : undefined,
+        residualProbability: r.residualProbability ?? null,
+        residualImpact: r.residualImpact ?? null,
+        assessment: (r.assessment ?? undefined) as Prisma.InputJsonValue | undefined,
+      })),
     );
     if (allRisks.length > 0) await tx.risk.createMany({ data: allRisks });
 

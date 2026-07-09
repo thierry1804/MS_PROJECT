@@ -4,6 +4,34 @@ export type Health = "green" | "amber" | "red";
 export type ProjectStatus = "cadrage" | "en-cours" | "en-pause" | "termine";
 export type RiskStatus = "ouvert" | "traite";
 
+export type RiskCategory =
+  | "Planning"
+  | "Budget"
+  | "Ressources"
+  | "Technique"
+  | "Fournisseur"
+  | "Conformité"
+  | "Sécurité"
+  | "Organisation"
+  | "Qualité"
+  | "Externe";
+
+export type RiskStrategy = "éviter" | "réduire" | "transférer" | "accepter";
+
+export interface RiskAssessmentEntry {
+  at: string;
+  source: "heuristic" | "llm" | "manual";
+  userHint?: string;
+  rationale: string;
+  confidence: number;
+  answers?: Record<string, unknown>;
+}
+
+export interface RiskAssessment {
+  last: RiskAssessmentEntry;
+  history: RiskAssessmentEntry[];
+}
+
 export interface Risk {
   id: string;
   label: string;
@@ -15,6 +43,15 @@ export interface Risk {
   status: RiskStatus;
   /** Mesure de mitigation prévue. */
   mitigation?: string;
+  category?: RiskCategory;
+  strategy?: RiskStrategy;
+  /** KRI / signaux de déclenchement. */
+  triggers?: string[];
+  /** P après mitigation (1–5). */
+  residualProbability?: number;
+  /** I après mitigation (1–5). */
+  residualImpact?: number;
+  assessment?: RiskAssessment;
 }
 
 export type ActionStatus = "a-faire" | "en-cours" | "fait";

@@ -3,7 +3,7 @@ import { execSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PrismaClient as SqlitePrismaClient } from "./generated/sqlite-client/index.js";
-import { applyRuntimeDatabaseConfig, normalizePooledDatabaseUrl } from "./runtime-config.js";
+import { applyRuntimeDatabaseConfig, resolveDatabaseUrls } from "./runtime-config.js";
 
 export const isDesktopMode = process.env.DESKTOP_MODE === "1";
 
@@ -33,9 +33,10 @@ export function getCloudPrisma(): PgPrismaClient | null {
   return cloudClient;
 }
 
-export async function connectCloudPrisma(databaseUrl: string, _directUrl?: string): Promise<PgPrismaClient> {
+export async function connectCloudPrisma(databaseUrl: string, directUrl?: string): Promise<PgPrismaClient> {
+  const { pooledUrl } = resolveDatabaseUrls(databaseUrl, directUrl);
   const next = new PgPrismaClient({
-    datasources: { db: { url: normalizePooledDatabaseUrl(databaseUrl) } },
+    datasources: { db: { url: pooledUrl } },
   });
   await next.$connect();
   if (cloudClient) await cloudClient.$disconnect().catch(() => undefined);
@@ -55,7 +56,7 @@ export async function reconnectPrisma(databaseUrl: string, directUrl?: string): 
   if (isDesktopMode) {
     throw new Error("reconnectPrisma is not used in desktop mode; configure cloud sync instead.");
   }
-  const pooledUrl = normalizePooledDatabaseUrl(databaseUrl);
+  const { pooledUrl, directUrl: resolvedDirect } = resolveDatabaseUrls(databaseUrl, directUrl);
   const next = new PgPrismaClient({
     datasources: { db: { url: pooledUrl } },
   });
@@ -64,7 +65,7 @@ export async function reconnectPrisma(databaseUrl: string, directUrl?: string): 
     await localClient.$disconnect();
     localClient = next;
     process.env.DATABASE_URL = pooledUrl;
-    process.env.DIRECT_URL = directUrl ?? databaseUrl;
+    process.env.DIRECT_URL = resolvedDirect;
   } catch (err) {
     await next.$disconnect().catch(() => undefined);
     throw err;

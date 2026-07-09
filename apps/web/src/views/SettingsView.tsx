@@ -2,10 +2,15 @@ import { useEffect, useState } from "react";
 import type { CustomFieldDef, CustomFieldType } from "../domain";
 import { portfolioSidebarLabel } from "../domain";
 import {
+  fetchAiConfig,
   fetchCloudSyncStatus,
   fetchDatabaseConfig,
+  saveAiConfig,
   saveCloudConfig,
   saveDatabaseConfig,
+  testAiConfig,
+  type AiConfigStatus,
+  type AiPreset,
   type CloudSyncStatus,
   type DatabaseConfigStatus,
 } from "../sync";
@@ -17,6 +22,33 @@ const TYPE_LABELS: Record<CustomFieldType, string> = {
   number: "Nombre",
   select: "Liste de choix",
 };
+
+const AI_PRESET_LABELS: Record<AiPreset, string> = {
+  openrouter: "OpenRouter",
+  openai: "OpenAI",
+  custom: "Personnalisé",
+};
+
+const AI_PRESET_DEFAULTS: Record<AiPreset, { baseUrl: string; model: string }> = {
+  openrouter: { baseUrl: "https://openrouter.ai/api/v1", model: "openai/gpt-oss-120b:free" },
+  openai: { baseUrl: "https://api.openai.com/v1", model: "gpt-4o-mini" },
+  custom: { baseUrl: "", model: "" },
+};
+
+const OPENROUTER_FREE_MODELS = [
+  { id: "openai/gpt-oss-120b:free", label: "GPT-OSS 120B — raisonnement, JSON structuré (recommandé)" },
+  { id: "nvidia/nemotron-3-super-120b-a12b:free", label: "Nemotron 3 Super 120B — agentique" },
+  { id: "deepseek/deepseek-r1:free", label: "DeepSeek R1 — raisonnement profond" },
+  { id: "openrouter/free", label: "Auto — meilleur modèle gratuit disponible" },
+] as const;
+
+function openRouterModelOptions(currentModel: string) {
+  const known = new Set<string>(OPENROUTER_FREE_MODELS.map((m) => m.id));
+  if (currentModel && !known.has(currentModel)) {
+    return [...OPENROUTER_FREE_MODELS, { id: currentModel, label: `${currentModel} (personnalisé)` }];
+  }
+  return OPENROUTER_FREE_MODELS;
+}
 
 const DB_SOURCE_LABELS: Record<DatabaseConfigStatus["source"], string> = {
   file: "Fichier local",
@@ -60,6 +92,17 @@ export function SettingsView() {
   const [type, setType] = useState<CustomFieldType>("text");
   const [options, setOptions] = useState("");
 
+  const [aiStatus, setAiStatus] = useState<AiConfigStatus | null>(null);
+  const [aiError, setAiError] = useState(false);
+  const [aiPreset, setAiPreset] = useState<AiPreset>("openrouter");
+  const [aiApiKey, setAiApiKey] = useState("");
+  const [aiBaseUrl, setAiBaseUrl] = useState(AI_PRESET_DEFAULTS.openrouter.baseUrl);
+  const [aiModel, setAiModel] = useState(AI_PRESET_DEFAULTS.openrouter.model);
+  const [aiSaving, setAiSaving] = useState(false);
+  const [aiTesting, setAiTesting] = useState(false);
+  const [aiMessage, setAiMessage] = useState<string | null>(null);
+  const [aiSaved, setAiSaved] = useState(false);
+
   useEffect(() => {
     setAppName(portfolio.appName ?? "Atelier");
     setPortfolioLabel(portfolio.name);
@@ -76,7 +119,15 @@ export function SettingsView() {
         setCloudEnabled(status.enabled);
       })
       .catch(() => setCloudError(true));
-  }, [dbSaved, cloudSaving]);
+    fetchAiConfig()
+      .then((status) => {
+        setAiStatus(status);
+        setAiPreset(status.preset);
+        if (status.baseUrl) setAiBaseUrl(status.baseUrl);
+        if (status.model) setAiModel(status.model);
+      })
+      .catch(() => setAiError(true));
+  }, [dbSaved, cloudSaving, aiSaved]);
 
   function saveGeneral() {
     updateAppSettings({
@@ -126,6 +177,52 @@ export function SettingsView() {
       setCloudMessage(err instanceof Error ? err.message : "Échec de la configuration cloud.");
     } finally {
       setCloudSaving(false);
+    }
+  }
+
+  function onAiPresetChange(preset: AiPreset) {
+    setAiPreset(preset);
+    if (preset !== "custom") {
+      setAiBaseUrl(AI_PRESET_DEFAULTS[preset].baseUrl);
+      setAiModel(AI_PRESET_DEFAULTS[preset].model);
+    }
+  }
+
+  async function saveAi() {
+    setAiSaving(true);
+    setAiMessage(null);
+    try {
+      const status = await saveAiConfig({
+        preset: aiPreset,
+        apiKey: aiApiKey.trim() || undefined,
+        baseUrl: aiBaseUrl.trim() || undefined,
+        model: aiModel.trim() || undefined,
+      });
+      setAiStatus(status);
+      setAiApiKey("");
+      setAiError(false);
+      setAiMessage("Configuration IA enregistrée.");
+      setAiSaved((v) => !v);
+    } catch (err) {
+      setAiError(true);
+      setAiMessage(err instanceof Error ? err.message : "Échec de l'enregistrement IA.");
+    } finally {
+      setAiSaving(false);
+    }
+  }
+
+  async function runAiTest() {
+    setAiTesting(true);
+    setAiMessage(null);
+    try {
+      const result = await testAiConfig();
+      setAiMessage(result.ok ? "Connexion IA OK." : (result.error ?? "Échec du test."));
+      setAiError(!result.ok);
+    } catch (err) {
+      setAiError(true);
+      setAiMessage(err instanceof Error ? err.message : "Échec du test IA.");
+    } finally {
+      setAiTesting(false);
     }
   }
 
@@ -397,9 +494,111 @@ export function SettingsView() {
               </footer>
             </section>
           )}
-        </div>
 
-        <section className="set-card set-card-wide">
+          <section className="set-card set-card-wide">
+          <div className="set-card-head">
+            <h2>Assistant IA (risques)</h2>
+            <p className="set-hint">
+              Enrichissement LLM via OpenRouter (modèles gratuits recommandés) ou API OpenAI-compatible.
+              Créez une clé sur{" "}
+              <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">
+                openrouter.ai/keys
+              </a>
+              . Sans clé, l'assistant utilise les heuristiques locales.
+            </p>
+          </div>
+
+          {aiError && !aiStatus && (
+            <div className="set-callout warn">API hors ligne — impossible de lire la configuration IA.</div>
+          )}
+
+          {aiStatus && (
+            <dl className="set-status">
+              <div className="set-status-row">
+                <dt>État</dt>
+                <dd>
+                  <span className={`set-badge ${aiStatus.configured ? "file" : "none"}`}>
+                    {aiStatus.configured ? "IA activée" : "Mode heuristique seul"}
+                  </span>
+                </dd>
+              </div>
+              {aiStatus.configured && (
+                <>
+                  <div className="set-status-row">
+                    <dt>Clé</dt>
+                    <dd>{aiStatus.apiKeyMasked || "—"}</dd>
+                  </div>
+                  <div className="set-status-row">
+                    <dt>Modèle</dt>
+                    <dd>{aiStatus.model}</dd>
+                  </div>
+                </>
+              )}
+            </dl>
+          )}
+
+          {aiMessage && <p className={`set-feedback${aiError ? " warn" : " ok"}`}>{aiMessage}</p>}
+
+          <div className="set-fields-grid set-fields-grid-3">
+            <label className="set-field">
+              <span>Fournisseur</span>
+              <select value={aiPreset} onChange={(e) => onAiPresetChange(e.target.value as AiPreset)}>
+                {(Object.keys(AI_PRESET_LABELS) as AiPreset[]).map((p) => (
+                  <option key={p} value={p}>
+                    {AI_PRESET_LABELS[p]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="set-field set-field-span-2">
+              <span>Clé API</span>
+              <input
+                type="password"
+                value={aiApiKey}
+                onChange={(e) => setAiApiKey(e.target.value)}
+                placeholder={aiStatus?.apiKeyMasked ? "Laisser vide pour conserver la clé actuelle" : "sk-or-…"}
+                autoComplete="off"
+              />
+            </label>
+            <label className="set-field set-field-span">
+              <span>URL de base</span>
+              <input
+                value={aiBaseUrl}
+                onChange={(e) => setAiBaseUrl(e.target.value)}
+                placeholder="https://openrouter.ai/api/v1"
+              />
+            </label>
+            <label className="set-field set-field-span">
+              <span>Modèle</span>
+              {aiPreset === "openrouter" ? (
+                <select value={aiModel} onChange={(e) => setAiModel(e.target.value)}>
+                  {openRouterModelOptions(aiModel).map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  value={aiModel}
+                  onChange={(e) => setAiModel(e.target.value)}
+                  placeholder="gpt-4o-mini"
+                />
+              )}
+            </label>
+          </div>
+
+          <footer className="set-card-foot">
+            <button className="set-save ghost" type="button" onClick={() => void runAiTest()} disabled={aiTesting}>
+              {aiTesting ? "Test…" : "Tester la connexion"}
+            </button>
+            <button className="set-save" type="button" onClick={() => void saveAi()} disabled={aiSaving}>
+              {aiSaving ? "Enregistrement…" : "Enregistrer"}
+            </button>
+          </footer>
+          </section>
+
+          <section className="set-card set-card-wide">
           <div className="set-card-head">
             <h2>Champs personnalisés</h2>
             <p className="set-hint">Colonnes métier sur les tâches, visibles dans l'inspecteur de tâche.</p>
@@ -483,7 +682,8 @@ export function SettingsView() {
               </button>
             </footer>
           )}
-        </section>
+          </section>
+        </div>
       </div>
     </>
   );

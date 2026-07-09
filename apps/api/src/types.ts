@@ -5,6 +5,20 @@
  */
 import type { Dependency, Resource, Task } from "@atelier/scheduling-engine";
 
+export interface WireRiskAssessmentEntry {
+  at: string;
+  source: "heuristic" | "llm" | "manual";
+  userHint?: string;
+  rationale: string;
+  confidence: number;
+  answers?: Record<string, unknown>;
+}
+
+export interface WireRiskAssessment {
+  last: WireRiskAssessmentEntry;
+  history: WireRiskAssessmentEntry[];
+}
+
 export interface WireRisk {
   id: string;
   label: string;
@@ -13,6 +27,12 @@ export interface WireRisk {
   owner: string;
   status: string;
   mitigation?: string;
+  category?: string;
+  strategy?: string;
+  triggers?: string[];
+  residualProbability?: number;
+  residualImpact?: number;
+  assessment?: WireRiskAssessment;
 }
 
 export interface WireAction {

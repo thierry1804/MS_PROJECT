@@ -15,6 +15,21 @@ import {
   syncNow,
 } from "./sync-engine.js";
 import type { WirePortfolio } from "./types.js";
+import { getAiConfigStatus, readRuntimeAiConfig, writeRuntimeAiConfig, type AiPreset } from "./ai-config.js";
+import { runRiskAssist, testAiConnection, type RiskAssistRequestBody } from "./risk-assist.js";
+
+function isDatabaseUnreachable(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const e = err as { name?: string; message?: string };
+  return (
+    e.name === "PrismaClientInitializationError" ||
+    Boolean(e.message?.includes("Can't reach database server")) ||
+    Boolean(e.message?.includes("Connection timed out"))
+  );
+}
+
+const DB_UNAVAILABLE_MSG =
+  "Base de données inaccessible. Vérifiez que le projet Neon est actif (console.neon.tech) et que l'URL pooler est correcte dans Paramètres.";
 
 interface AuditPayload {
   entityType: string;
@@ -41,6 +56,15 @@ if (isDesktopMode) {
   startPeriodicSync();
   void syncNow();
 }
+
+app.setErrorHandler((err, _req, reply) => {
+  if (isDatabaseUnreachable(err)) {
+    app.log.error(err);
+    return reply.code(503).send({ error: DB_UNAVAILABLE_MSG });
+  }
+  app.log.error(err);
+  return reply.code(500).send({ error: "Erreur serveur interne." });
+});
 
 app.get("/api/health", async () => ({
   ok: true,
@@ -118,8 +142,11 @@ app.put("/api/config/database", async (req, reply) => {
   writeRuntimeDatabaseConfig({ databaseUrl, directUrl });
   try {
     await reconnectPrisma(databaseUrl, directUrl);
-  } catch {
-    return reply.code(400).send({ error: "Connexion impossible avec ces URLs. Vérifiez les identifiants." });
+  } catch (err) {
+    const detail = isDatabaseUnreachable(err)
+      ? "Connexion impossible. Utilisez l'URL pooler Neon (*-pooler.*.neon.tech) ou vérifiez que le projet n'est pas suspendu."
+      : "Connexion impossible avec ces URLs. Vérifiez les identifiants.";
+    return reply.code(400).send({ error: detail });
   }
   return { ok: true, reconnected: true };
 });
@@ -151,6 +178,36 @@ app.post("/api/sync/now", async () => syncNow());
 app.post("/api/sync/dismiss-conflict", async () => {
   await dismissConflict();
   return { ok: true };
+});
+
+app.get("/api/config/ai", async () => getAiConfigStatus());
+
+app.put("/api/config/ai", async (req, reply) => {
+  const body = req.body as {
+    preset?: AiPreset;
+    apiKey?: string;
+    baseUrl?: string;
+    model?: string;
+  };
+  const current = readRuntimeAiConfig() ?? {};
+  const apiKey = body.apiKey?.trim();
+  writeRuntimeAiConfig({
+    preset: body.preset ?? current.preset ?? "openrouter",
+    apiKey: apiKey && !apiKey.includes("••••") ? apiKey : current.apiKey,
+    baseUrl: body.baseUrl?.trim() || current.baseUrl,
+    model: body.model?.trim() || current.model,
+  });
+  return { ok: true, ...getAiConfigStatus() };
+});
+
+app.post("/api/config/ai/test", async () => testAiConnection());
+
+app.post("/api/risk-assist", async (req, reply) => {
+  const body = req.body as RiskAssistRequestBody;
+  if (!body?.projectId || !body.context || !Array.isArray(body.heuristicSuggestions)) {
+    return reply.code(400).send({ error: "Corps de requête invalide." });
+  }
+  return runRiskAssist(body);
 });
 
 const port = Number(process.env.PORT ?? 8787);
