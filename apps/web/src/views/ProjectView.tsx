@@ -72,6 +72,7 @@ function ProjectViewBody({ project, portfolio }: { project: Project; portfolio: 
   const addSubTask = useStore((s) => s.addSubTask);
   const indentTask = useStore((s) => s.indentTask);
   const outdentTask = useStore((s) => s.outdentTask);
+  const reorderTask = useStore((s) => s.reorderTask);
   const deleteTask = useStore((s) => s.deleteTask);
   const importProjectTasks = useStore((s) => s.importProjectTasks);
   const [zoom, setZoom] = useState(1);
@@ -425,6 +426,7 @@ function ProjectViewBody({ project, portfolio }: { project: Project; portfolio: 
       <div className="project-split">
         <div className="grid-pane">
           <div className="grid-head tnum">
+            <span style={{ width: 28 }} className="h" aria-hidden />
             <span style={{ width: 44 }} className="h num">
               N°
             </span>
@@ -459,6 +461,7 @@ function ProjectViewBody({ project, portfolio }: { project: Project; portfolio: 
               onToggle={toggleCollapse}
               onSelect={selectTask}
               onUpdate={(taskId, patch) => updateTask(project.id, taskId, patch)}
+              onReorder={(taskId, newIndex) => reorderTask(project.id, taskId, newIndex)}
               showVariance={showVariance}
               resources={portfolio.resources}
             />
@@ -483,6 +486,7 @@ function ProjectViewBody({ project, portfolio }: { project: Project; portfolio: 
               onSelect={selectTask}
               todayISO={today}
               showBaseline={showVariance}
+              onUpdate={(taskId, patch) => updateTask(project.id, taskId, patch)}
             />
             <div style={{ height: 16, width: range.days * dw }} />
           </div>
@@ -503,6 +507,7 @@ function ProjectViewBody({ project, portfolio }: { project: Project; portfolio: 
             }
             onRemoveDependency={(predId) => removeDependency(project.id, predId, selectedTask.id)}
             onSelect={selectTask}
+            onReorder={(taskId, newIndex) => reorderTask(project.id, taskId, newIndex)}
           />
         )}
       </div>

@@ -405,6 +405,68 @@
   cursor: pointer;
 }
 
+.bar-group.bar-draggable .bar-body {
+  cursor: grab;
+}
+
+.bar-group.bar-dragging .bar-body {
+  cursor: grabbing;
+}
+
+.bar-handle {
+  cursor: ew-resize;
+}
+
+.gantt-svg.gantt-dragging {
+  cursor: grabbing;
+}
+
+.gantt-svg.gantt-dragging .bar-handle {
+  cursor: ew-resize;
+}
+
+.drag-cell {
+  width: 28px;
+  padding: 0 !important;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: 11px;
+  letter-spacing: -2px;
+  color: var(--ink-3);
+  cursor: grab;
+  border-radius: 3px;
+  user-select: none;
+}
+
+.drag-handle:hover {
+  color: var(--ink-1);
+  background: var(--paper-2);
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.task-grid tr.dragging td {
+  opacity: 0.45;
+}
+
+.task-grid tr.drop-before td {
+  box-shadow: inset 0 2px 0 0 var(--accent);
+}
+
+.task-grid tr.drop-after td {
+  box-shadow: inset 0 -2px 0 0 var(--accent);
+}
+
 .project-import-error {
   display: flex;
   align-items: flex-start;

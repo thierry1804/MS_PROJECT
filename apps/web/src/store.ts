@@ -146,6 +146,8 @@ interface AppState {
   indentTask: (projectId: string, taskId: string) => void;
   /** Outdent: promote the task to sit right after its former parent, one level up. */
   outdentTask: (projectId: string, taskId: string) => void;
+  /** Reorder a task among its siblings (same parent). `newIndex` is 0-based among siblings. */
+  reorderTask: (projectId: string, taskId: string, newIndex: number) => void;
   /** Delete a task and its whole subtree, plus any dependency touching them. */
   deleteTask: (projectId: string, taskId: string) => void;
   /** Replace all project tasks (and dependencies) from an imported file. */
@@ -739,6 +741,45 @@ export const useStore = create<AppState>()((set, get) => ({
         },
       };
     }),
+
+  reorderTask: (projectId, taskId, newIndex) => {
+    const project = get().portfolio.projects.find((p) => p.id === projectId);
+    if (!project) return;
+    const task = project.tasks.find((t) => t.id === taskId);
+    if (!task) return;
+    const siblings = project.tasks
+      .filter((t) => t.parentId === task.parentId)
+      .sort((a, b) => a.order - b.order);
+    const from = siblings.findIndex((t) => t.id === taskId);
+    if (from < 0) return;
+    const clamped = Math.max(0, Math.min(siblings.length - 1, newIndex));
+    if (from === clamped) return;
+    const reordered = [...siblings];
+    const [moved] = reordered.splice(from, 1);
+    reordered.splice(clamped, 0, moved!);
+    const orderById = new Map(reordered.map((t, i) => [t.id, i]));
+    set((s) => ({
+      portfolio: {
+        ...s.portfolio,
+        projects: s.portfolio.projects.map((p) =>
+          p.id !== projectId
+            ? p
+            : {
+                ...p,
+                tasks: p.tasks.map((t) =>
+                  orderById.has(t.id) ? { ...t, order: orderById.get(t.id)! } : t,
+                ),
+              },
+        ),
+      },
+    }));
+    void logAudit({
+      entityType: "task",
+      entityId: taskId,
+      action: "update",
+      summary: `Tâche « ${task.name} » : ordre ${from + 1} → ${clamped + 1}`,
+    });
+  },
 
   deleteTask: (projectId, taskId) => {
     const project = get().portfolio.projects.find((p) => p.id === projectId);

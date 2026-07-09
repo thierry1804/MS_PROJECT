@@ -7,6 +7,7 @@ import {
   type ScheduleResult,
   type Task,
 } from "@atelier/scheduling-engine";
+import { durationCustomFields } from "../duration";
 import { EUR, fmtDate, type CustomFieldDef, type Project } from "../domain";
 
 const DEP_LABELS: Record<DependencyType, string> = {
@@ -34,6 +35,7 @@ interface Props {
   onAddDependency: (predecessorId: string, type: DependencyType, lag: number) => void;
   onRemoveDependency: (predecessorId: string) => void;
   onSelect: (taskId: string) => void;
+  onReorder?: (taskId: string, newIndex: number) => void;
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -57,6 +59,7 @@ export function TaskInspector({
   onAddDependency,
   onRemoveDependency,
   onSelect,
+  onReorder,
 }: Props) {
   const s = schedule.tasks.get(task.id);
   const resById = useMemo(() => new Map(resources.map((r) => [r.id, r])), [resources]);
@@ -67,6 +70,13 @@ export function TaskInspector({
   const [newResId, setNewResId] = useState("");
 
   if (!s) return null;
+
+  const siblings = project.tasks
+    .filter((t) => t.parentId === task.parentId)
+    .sort((a, b) => a.order - b.order);
+  const siblingIdx = siblings.findIndex((t) => t.id === task.id);
+  const canMoveUp = !!onReorder && siblingIdx > 0;
+  const canMoveDown = !!onReorder && siblingIdx >= 0 && siblingIdx < siblings.length - 1;
 
   const isLeaf = !s.isSummary;
   const plannedCost = taskPlannedCost(task, s.duration, resById);
@@ -184,6 +194,29 @@ export function TaskInspector({
               <span className="insp-v">{fmtDate(s.finishDate, true)}</span>
             </div>
           </div>
+          {isLeaf && (
+            <label className="insp-check">
+              <input
+                type="checkbox"
+                checked={s.isMilestone}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    onUpdate(task.id, {
+                      duration: 0,
+                      custom: { ...task.custom, ...durationCustomFields(0) },
+                      constraint: { type: "MSO", date: s.startDate },
+                    });
+                  } else {
+                    onUpdate(task.id, {
+                      duration: 1,
+                      custom: { ...task.custom, ...durationCustomFields(1) },
+                    });
+                  }
+                }}
+              />
+              Jalon (durée 0)
+            </label>
+          )}
           {isLeaf && !s.isMilestone && (
             <div className="insp-row">
               <label className="insp-field">
@@ -196,8 +229,19 @@ export function TaskInspector({
                   defaultValue={task.duration}
                   onBlur={(e) => {
                     const n = Math.round(Number(e.currentTarget.value));
-                    if (Number.isFinite(n) && n >= 0 && n !== task.duration)
-                      onUpdate(task.id, { duration: n });
+                    if (!Number.isFinite(n) || n < 0 || n === task.duration) return;
+                    if (n === 0) {
+                      onUpdate(task.id, {
+                        duration: 0,
+                        custom: { ...task.custom, ...durationCustomFields(0) },
+                        constraint: { type: "MSO", date: s.startDate },
+                      });
+                    } else {
+                      onUpdate(task.id, {
+                        duration: n,
+                        custom: { ...task.custom, ...durationCustomFields(n) },
+                      });
+                    }
                   }}
                 />
               </label>
@@ -228,6 +272,31 @@ export function TaskInspector({
               />
               Jalon atteint
             </label>
+          )}
+          {onReorder && (
+            <div className="insp-row insp-order">
+              <span className="insp-k">Ordre</span>
+              <div className="insp-order-btns">
+                <button
+                  type="button"
+                  className="insp-order-btn"
+                  disabled={!canMoveUp}
+                  onClick={() => onReorder(task.id, siblingIdx - 1)}
+                  title="Monter parmi les frères"
+                >
+                  ↑ Monter
+                </button>
+                <button
+                  type="button"
+                  className="insp-order-btn"
+                  disabled={!canMoveDown}
+                  onClick={() => onReorder(task.id, siblingIdx + 1)}
+                  title="Descendre parmi les frères"
+                >
+                  ↓ Descendre
+                </button>
+              </div>
+            </div>
           )}
         </Section>
 

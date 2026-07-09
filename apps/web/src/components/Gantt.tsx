@@ -1,7 +1,16 @@
-import { Fragment, useMemo } from "react";
-import type { CalendarDef, Resource, ScheduleResult } from "@atelier/scheduling-engine";
-import type { Project } from "../domain";
+import { Fragment, useMemo, useRef, useState } from "react";
 import {
+  parseISO,
+  toISO,
+  workingDaysBetween,
+  type CalendarDef,
+  type Resource,
+  type ScheduleResult,
+  type Task,
+} from "@atelier/scheduling-engine";
+import { durationCustomFields } from "../duration";
+import {
+  DAY_MS,
   dayOffset,
   monthBands,
   nonWorkingOffsets,
@@ -13,6 +22,7 @@ import {
 export const ROW_H = 32;
 const BAR_H = 18;
 const BAR_Y = (ROW_H - BAR_H) / 2;
+const HANDLE_W = 6;
 
 interface BarGeom {
   x: number;
@@ -21,8 +31,21 @@ interface BarGeom {
   row: number;
 }
 
+type DragMode = "move" | "resize-start" | "resize-end";
+
+interface DragState {
+  taskId: string;
+  mode: DragMode;
+  originX: number;
+  /** Inclusive calendar-day offsets from range.start. */
+  origStartOff: number;
+  origEndOff: number;
+  previewStartOff: number;
+  previewEndOff: number;
+}
+
 interface Props {
-  project: Project;
+  project: ProjectLike;
   schedule: ScheduleResult;
   visibleIds: string[];
   range: TimeRange;
@@ -34,6 +57,19 @@ interface Props {
   todayISO: string;
   /** Draw captured baseline bars beneath each task bar. */
   showBaseline?: boolean;
+  /** Commit schedule edits from bar drag (move / resize). */
+  onUpdate?: (taskId: string, patch: Partial<Task>) => void;
+  /** When true, bars are display-only (e.g. PNG export). */
+  readOnly?: boolean;
+}
+
+interface ProjectLike {
+  tasks: Task[];
+  dependencies: {
+    predecessorId: string;
+    successorId: string;
+    type: "FS" | "SS" | "FF" | "SF";
+  }[];
 }
 
 /** Orthogonal dependency path. exit/enter: +1 = rightward, -1 = leftward. */
@@ -44,6 +80,15 @@ function elbow(x1: number, y1: number, x2: number, y2: number, exit: 1 | -1, ent
   if (direct) return `M ${x1} ${y1} H ${sx} V ${y2} H ${x2}`;
   const detourY = y1 + (y2 >= y1 ? ROW_H / 2 : -ROW_H / 2);
   return `M ${x1} ${y1} H ${sx} V ${detourY} H ${ex} V ${y2} H ${x2}`;
+}
+
+function inclusiveWorkingDuration(cal: CalendarDef, startISO: string, finishISO: string): number {
+  const endExclusive = toISO(parseISO(finishISO) + DAY_MS);
+  return Math.max(0, workingDaysBetween(cal, startISO, endExclusive));
+}
+
+function offsetToISO(range: TimeRange, offset: number): string {
+  return toISO(offsetToUTC(range, offset));
 }
 
 export function GanttHeader({ range, dayWidth }: { range: TimeRange; dayWidth: number }) {
@@ -93,29 +138,142 @@ export function Gantt({
   onSelect,
   todayISO,
   showBaseline = false,
+  onUpdate,
+  readOnly = false,
 }: Props) {
   const dw = dayWidth;
   const width = range.days * dw;
   const height = visibleIds.length * ROW_H;
   const resourceById = useMemo(() => new Map(resources.map((r) => [r.id, r])), [resources]);
   const tasksById = useMemo(() => new Map(project.tasks.map((t) => [t.id, t])), [project.tasks]);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [drag, setDrag] = useState<DragState | null>(null);
+  const dragRef = useRef<DragState | null>(null);
+  dragRef.current = drag;
 
   const geoms = new Map<string, BarGeom>();
   visibleIds.forEach((id, row) => {
     const s = schedule.tasks.get(id);
     if (!s) return;
-    const x = dayOffset(range, s.startDate) * dw;
-    const endOff = dayOffset(range, s.finishDate) + 1;
-    const w = Math.max(dw * 0.5, endOff * dw - x);
+    let startOff = dayOffset(range, s.startDate);
+    let endOff = dayOffset(range, s.finishDate);
+    if (drag?.taskId === id) {
+      startOff = drag.previewStartOff;
+      endOff = drag.previewEndOff;
+    }
+    const x = startOff * dw;
+    const w = Math.max(dw * 0.5, (endOff + 1) * dw - x);
     geoms.set(id, { x, w, cy: row * ROW_H + ROW_H / 2, row });
   });
 
   const nonWorking = useMemo(() => nonWorkingOffsets(range, calendar), [range, calendar]);
   const weeks = useMemo(() => weekStarts(range), [range]);
   const todayX = dayOffset(range, todayISO) * dw;
+  const editable = !readOnly && !!onUpdate;
+
+  function clientXToSvgX(clientX: number): number {
+    const svg = svgRef.current;
+    if (!svg) return 0;
+    const pt = svg.createSVGPoint();
+    pt.x = clientX;
+    pt.y = 0;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return clientX - svg.getBoundingClientRect().left;
+    return pt.matrixTransform(ctm.inverse()).x;
+  }
+
+  function beginDrag(taskId: string, mode: DragMode, clientX: number) {
+    const s = schedule.tasks.get(taskId);
+    if (!s || s.isSummary || !editable) return;
+    if (s.isMilestone && mode !== "move") return;
+    const origStartOff = dayOffset(range, s.startDate);
+    const origEndOff = dayOffset(range, s.finishDate);
+    const next: DragState = {
+      taskId,
+      mode,
+      originX: clientXToSvgX(clientX),
+      origStartOff,
+      origEndOff,
+      previewStartOff: origStartOff,
+      previewEndOff: origEndOff,
+    };
+    setDrag(next);
+    onSelect(taskId);
+
+    const onMove = (ev: PointerEvent) => {
+      const cur = dragRef.current;
+      if (!cur) return;
+      const dx = clientXToSvgX(ev.clientX) - cur.originX;
+      const dayDelta = Math.round(dx / dw);
+      let start = cur.origStartOff;
+      let end = cur.origEndOff;
+      if (cur.mode === "move") {
+        start = cur.origStartOff + dayDelta;
+        end = cur.origEndOff + dayDelta;
+      } else if (cur.mode === "resize-end") {
+        end = Math.max(cur.origStartOff, cur.origEndOff + dayDelta);
+      } else {
+        start = Math.min(cur.origEndOff, cur.origStartOff + dayDelta);
+      }
+      start = Math.max(0, Math.min(range.days - 1, start));
+      end = Math.max(0, Math.min(range.days - 1, end));
+      if (start > end) end = start;
+      setDrag({ ...cur, previewStartOff: start, previewEndOff: end });
+    };
+
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      const cur = dragRef.current;
+      setDrag(null);
+      if (!cur || !onUpdate) return;
+      const changed =
+        cur.previewStartOff !== cur.origStartOff || cur.previewEndOff !== cur.origEndOff;
+      if (!changed) return;
+
+      const task = tasksById.get(cur.taskId);
+      const sched = schedule.tasks.get(cur.taskId);
+      if (!task || !sched) return;
+
+      const newStart = offsetToISO(range, cur.previewStartOff);
+      const newFinish = offsetToISO(range, cur.previewEndOff);
+
+      if (sched.isMilestone) {
+        onUpdate(cur.taskId, { constraint: { type: "MSO", date: newStart } });
+        return;
+      }
+
+      if (cur.mode === "move") {
+        onUpdate(cur.taskId, { constraint: { type: "MSO", date: newStart } });
+        return;
+      }
+
+      const dur = Math.max(1, inclusiveWorkingDuration(calendar, newStart, newFinish));
+      if (cur.mode === "resize-start") {
+        onUpdate(cur.taskId, {
+          duration: dur,
+          constraint: { type: "MSO", date: newStart },
+          custom: { ...task.custom, ...durationCustomFields(dur) },
+        });
+      } else {
+        onUpdate(cur.taskId, {
+          duration: dur,
+          custom: { ...task.custom, ...durationCustomFields(dur) },
+        });
+      }
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
 
   return (
-    <svg width={width} height={height} className="gantt-svg">
+    <svg
+      ref={svgRef}
+      width={width}
+      height={height}
+      className={`gantt-svg${drag ? " gantt-dragging" : ""}`}
+    >
       <defs>
         <marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
           <path d="M 0 0 L 8 4 L 0 8 z" fill="var(--ink-3)" />
@@ -221,6 +379,7 @@ export function Gantt({
         const task = tasksById.get(id);
         if (!s || !g || !task) return null;
         const y = g.row * ROW_H;
+        const dragging = drag?.taskId === id;
 
         if (s.isSummary) {
           return (
@@ -237,7 +396,20 @@ export function Gantt({
           const cx = g.x;
           const done = task.percentComplete >= 100;
           return (
-            <g key={id} onClick={() => onSelect(id)} className="bar-group">
+            <g
+              key={id}
+              onClick={() => onSelect(id)}
+              className={`bar-group${editable ? " bar-draggable" : ""}${dragging ? " bar-dragging" : ""}`}
+              onPointerDown={
+                editable
+                  ? (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      beginDrag(id, "move", e.clientX);
+                    }
+                  : undefined
+              }
+            >
               <path
                 d={`M ${cx} ${g.cy - 7} L ${cx + 7} ${g.cy} L ${cx} ${g.cy + 7} L ${cx - 7} ${g.cy} Z`}
                 fill={done ? "var(--milestone)" : s.critical ? "var(--critical)" : "var(--paper-0)"}
@@ -249,27 +421,91 @@ export function Gantt({
                   {task.name}
                 </text>
               )}
+              <title>{`${task.name}\n${s.startDate}`}</title>
             </g>
           );
         }
 
         const fill = s.critical ? "var(--critical)" : "var(--bar-fill)";
-        const progW = (g.w * task.percentComplete) / 100;
+        const progW = dragging ? 0 : (g.w * task.percentComplete) / 100;
         const names = task.assignments
           .map((as) => resourceById.get(as.resourceId)?.name)
           .filter(Boolean)
           .join(", ");
+        const tipStart = offsetToISO(range, Math.round(g.x / dw));
+        const tipFinish = offsetToISO(range, Math.round((g.x + g.w) / dw) - 1);
         return (
-          <g key={id} onClick={() => onSelect(id)} className="bar-group">
-            <rect x={g.x} y={y + BAR_Y} width={g.w} height={BAR_H} rx={3} fill={fill} opacity={0.45} />
+          <g
+            key={id}
+            onClick={() => onSelect(id)}
+            className={`bar-group${editable ? " bar-draggable" : ""}${dragging ? " bar-dragging" : ""}`}
+          >
+            <rect
+              x={g.x}
+              y={y + BAR_Y}
+              width={g.w}
+              height={BAR_H}
+              rx={3}
+              fill={fill}
+              opacity={0.45}
+              className="bar-body"
+              onPointerDown={
+                editable
+                  ? (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      beginDrag(id, "move", e.clientX);
+                    }
+                  : undefined
+              }
+            />
             {progW > 0 && (
-              <rect x={g.x} y={y + BAR_Y} width={progW} height={BAR_H} rx={3} fill={fill} />
+              <rect
+                x={g.x}
+                y={y + BAR_Y}
+                width={progW}
+                height={BAR_H}
+                rx={3}
+                fill={fill}
+                pointerEvents="none"
+              />
+            )}
+            {editable && g.w >= HANDLE_W * 2 + 4 && (
+              <>
+                <rect
+                  x={g.x}
+                  y={y + BAR_Y}
+                  width={HANDLE_W}
+                  height={BAR_H}
+                  fill="transparent"
+                  className="bar-handle bar-handle-start"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    beginDrag(id, "resize-start", e.clientX);
+                  }}
+                />
+                <rect
+                  x={g.x + g.w - HANDLE_W}
+                  y={y + BAR_Y}
+                  width={HANDLE_W}
+                  height={BAR_H}
+                  fill="transparent"
+                  className="bar-handle bar-handle-end"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    beginDrag(id, "resize-end", e.clientX);
+                  }}
+                />
+              </>
             )}
             {dw >= 10 && names && (
-              <text x={g.x + g.w + 8} y={g.cy + 4} className="bar-label">
+              <text x={g.x + g.w + 8} y={g.cy + 4} className="bar-label" pointerEvents="none">
                 {names}
               </text>
             )}
+            <title>{`${task.name}\n${tipStart} → ${tipFinish}`}</title>
           </g>
         );
       })}

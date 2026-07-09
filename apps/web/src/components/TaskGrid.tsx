@@ -13,6 +13,7 @@ interface Props {
   onToggle: (taskId: string) => void;
   onSelect: (taskId: string) => void;
   onUpdate: (taskId: string, patch: Partial<Task>) => void;
+  onReorder?: (taskId: string, newIndex: number) => void;
   showVariance?: boolean;
   resources?: Resource[];
 }
@@ -73,11 +74,15 @@ export function TaskGrid({
   onToggle,
   onSelect,
   onUpdate,
+  onReorder,
   showVariance = false,
   resources,
 }: Props) {
   const [edit, setEdit] = useState<EditState | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<{ id: string; place: "before" | "after" } | null>(null);
   const tasksById = new Map(project.tasks.map((t) => [t.id, t]));
+  const canReorder = !!onReorder;
 
   const resourceMap = useMemo(
     () => new Map((resources ?? []).map((r) => [r.id, r])),
@@ -94,10 +99,19 @@ export function TaskGrid({
     const n = Number(raw.replace(",", "."));
     if (!Number.isFinite(n)) return;
     if (field === "duration" && n >= 0 && n !== task.duration) {
-      onUpdate(task.id, {
-        duration: n,
-        custom: { ...task.custom, ...durationCustomFields(n) },
-      });
+      if (n === 0) {
+        const start = schedule.tasks.get(task.id)?.startDate;
+        onUpdate(task.id, {
+          duration: 0,
+          custom: { ...task.custom, ...durationCustomFields(0) },
+          ...(start ? { constraint: { type: "MSO", date: start } } : {}),
+        });
+      } else {
+        onUpdate(task.id, {
+          duration: n,
+          custom: { ...task.custom, ...durationCustomFields(n) },
+        });
+      }
     }
     if (field === "percentComplete") {
       const pct = Math.max(0, Math.min(100, Math.round(n)));
@@ -105,9 +119,29 @@ export function TaskGrid({
     }
   }
 
+  function applyDrop(targetId: string, place: "before" | "after") {
+    if (!onReorder || !dragId || dragId === targetId) return;
+    const dragged = tasksById.get(dragId);
+    const target = tasksById.get(targetId);
+    if (!dragged || !target || dragged.parentId !== target.parentId) return;
+
+    const siblings = project.tasks
+      .filter((t) => t.parentId === dragged.parentId)
+      .sort((a, b) => a.order - b.order);
+    const from = siblings.findIndex((t) => t.id === dragId);
+    let to = siblings.findIndex((t) => t.id === targetId);
+    if (from < 0 || to < 0) return;
+    if (place === "after") to += 1;
+    // After removal of `from`, indices ≥ from shift left.
+    if (from < to) to -= 1;
+    if (from === to) return;
+    onReorder(dragId, to);
+  }
+
   return (
     <table className="task-grid">
       <colgroup>
+        {canReorder && <col style={{ width: 28 }} />}
         <col style={{ width: 44 }} />
         <col />
         <col style={{ width: 52 }} />
@@ -129,6 +163,8 @@ export function TaskGrid({
           if (!task || !s) return null;
           const selected = selectedTaskId === id;
           const isEditing = (f: EditState["field"]) => edit?.taskId === id && edit.field === f;
+          const dropBefore = dropTarget?.id === id && dropTarget.place === "before";
+          const dropAfter = dropTarget?.id === id && dropTarget.place === "after";
 
           let deltaDeb = "—";
           let deltaFin = "—";
@@ -154,11 +190,69 @@ export function TaskGrid({
                 s.isSummary ? "summary" : "",
                 s.critical && !s.isSummary ? "critical" : "",
                 selected ? "selected" : "",
+                dragId === id ? "dragging" : "",
+                dropBefore ? "drop-before" : "",
+                dropAfter ? "drop-after" : "",
               ]
                 .filter(Boolean)
                 .join(" ")}
               onClick={() => onSelect(id)}
+              onDragOver={
+                canReorder && dragId
+                  ? (e) => {
+                      const dragged = tasksById.get(dragId);
+                      if (!dragged || dragged.parentId !== task.parentId || dragId === id) return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                      const place = e.clientY < rect.top + rect.height / 2 ? "before" : "after";
+                      setDropTarget({ id, place });
+                    }
+                  : undefined
+              }
+              onDragLeave={
+                canReorder
+                  ? () => {
+                      setDropTarget((cur) => (cur?.id === id ? null : cur));
+                    }
+                  : undefined
+              }
+              onDrop={
+                canReorder
+                  ? (e) => {
+                      e.preventDefault();
+                      const place = dropTarget?.id === id ? dropTarget.place : "before";
+                      applyDrop(id, place);
+                      setDragId(null);
+                      setDropTarget(null);
+                    }
+                  : undefined
+              }
             >
+              {canReorder && (
+                <td className="drag-cell">
+                  <span
+                    className="drag-handle"
+                    draggable
+                    title="Glisser pour réordonner"
+                    aria-label="Réordonner"
+                    onClick={(e) => e.stopPropagation()}
+                    onDragStart={(e) => {
+                      e.stopPropagation();
+                      e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.setData("text/plain", id);
+                      setDragId(id);
+                      onSelect(id);
+                    }}
+                    onDragEnd={() => {
+                      setDragId(null);
+                      setDropTarget(null);
+                    }}
+                  >
+                    ⋮⋮
+                  </span>
+                </td>
+              )}
               <td className="wbs num">{s.wbs}</td>
               <td className="name" style={{ paddingLeft: 10 + s.level * 16 }}>
                 {s.isSummary ? (

@@ -119,6 +119,7 @@ export function GanttExportFrame({
               onSelect={() => {}}
               todayISO={todayISO}
               showBaseline={showVariance}
+              readOnly
             />
           </div>
         </div>

@@ -387,13 +387,14 @@ export function DashboardView() {
                       const s = schedule.tasks.get(t.id);
                       if (!s?.isMilestone) return null;
                       const mx = dayOffset(range, s.finishDate) * RM_DW;
+                      const done = t.percentComplete >= 100;
                       return (
                         <path
                           key={t.id}
                           d={`M ${mx} ${y + 11} L ${mx + 5} ${y + 17} L ${mx} ${y + 23} L ${mx - 5} ${y + 17} Z`}
-                          fill={t.percentComplete >= 100 ? "var(--milestone)" : "var(--paper-0)"}
-                          stroke="var(--milestone)"
-                          strokeWidth={1.2}
+                          fill="var(--paper-0)"
+                          stroke={done ? "var(--ok)" : "var(--milestone)"}
+                          strokeWidth={done ? 1.8 : 1.2}
                         >
                           <title>{`${t.name} · ${fmtDate(s.finishDate, true)}`}</title>
                         </path>
