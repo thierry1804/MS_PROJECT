@@ -82,6 +82,11 @@ export async function getPortfolio(prisma: PrismaClient): Promise<WirePortfolio 
     budget: p.budget,
     projectStart: p.projectStart,
     baselineCapturedAt: p.baselineCapturedAt ?? undefined,
+    baselines: (p.baselines as WireProject["baselines"] | null) ?? undefined,
+    evmStatusDate: p.evmStatusDate ?? undefined,
+    progressMode: (p.progressMode as WireProject["progressMode"] | null) ?? undefined,
+    strategicAxis: p.strategicAxis ?? undefined,
+    sourceDemandId: p.sourceDemandId ?? undefined,
     custom: (p.custom as Record<string, string | number> | null) ?? undefined,
     tasks: p.tasks.map(
       (t): Task => ({
@@ -180,6 +185,10 @@ export async function getPortfolio(prisma: PrismaClient): Promise<WirePortfolio 
       createdAt: d.createdAt,
       convertedProjectId: d.convertedProjectId ?? undefined,
       gateHistory: (d.gateHistory as WireGateRecord[] | null) ?? undefined,
+      budgetSponsor: d.budgetSponsor ?? undefined,
+      desiredDate: d.desiredDate ?? undefined,
+      dependsOnProjectId: d.dependsOnProjectId ?? undefined,
+      strategicAxis: d.strategicAxis ?? undefined,
     })),
     customFields: customFields.map((f) => ({
       id: f.id,
@@ -275,6 +284,11 @@ export async function replacePortfolio(
           budget: p.budget,
           projectStart: p.projectStart,
           baselineCapturedAt: p.baselineCapturedAt ?? null,
+          baselines: (p.baselines as Prisma.InputJsonValue | undefined) ?? undefined,
+          evmStatusDate: p.evmStatusDate ?? null,
+          progressMode: p.progressMode ?? null,
+          strategicAxis: p.strategicAxis ?? null,
+          sourceDemandId: p.sourceDemandId ?? null,
           custom: p.custom ?? undefined,
         })),
       });
@@ -357,10 +371,22 @@ export async function replacePortfolio(
     if (payload.demands.length > 0) {
       await tx.demand.createMany({
         data: payload.demands.map((d) => ({
-          ...d,
+          id: d.id,
           portfolioId: PORTFOLIO_ID,
+          title: d.title,
+          sponsor: d.sponsor,
+          description: d.description,
+          estBudget: d.estBudget,
+          value: d.value,
+          effort: d.effort,
+          stage: d.stage,
+          createdAt: d.createdAt,
           convertedProjectId: d.convertedProjectId ?? null,
           gateHistory: (d.gateHistory as Prisma.InputJsonValue[] | undefined) ?? undefined,
+          budgetSponsor: d.budgetSponsor ?? null,
+          desiredDate: d.desiredDate ?? null,
+          dependsOnProjectId: d.dependsOnProjectId ?? null,
+          strategicAxis: d.strategicAxis ?? null,
         })),
       });
     }

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
+import { EvmSCurve } from "../components/EvmSCurve";
 import { HealthBadge, StatusBadge } from "../components/badges";
 import {
   EUR,
@@ -8,7 +9,8 @@ import {
   HEALTH_LABELS,
   type Project,
 } from "../domain";
-import { metricsOf, scheduleOf, useStore } from "../store";
+import { evmSeriesOf, metricsOf, scheduleOf, useStore } from "../store";
+import "../styles/project.css";
 import "../styles/report.css";
 
 function dayDiff(a: string, b: string): number {
@@ -47,6 +49,8 @@ export function ReportView() {
 
   const schedule = scheduleOf(project, portfolio);
   const metrics = metricsOf(project, portfolio);
+  const statusDate = project.evmStatusDate ?? today;
+  const evmSeries = useMemo(() => evmSeriesOf(project, portfolio), [project, portfolio]);
 
   const upcomingMilestones = useMemo(() => {
     const out: { name: string; date: string; baseline?: string; critical: boolean; done: boolean }[] = [];
@@ -110,6 +114,8 @@ export function ReportView() {
             <h1>{project.name}</h1>
             <div className="report-sub tnum">
               {project.code} · {project.manager} · émis le {fmtDate(today, true)}
+              {" · "}
+              date de statut EVM {fmtDate(project.evmStatusDate ?? today, true)}
             </div>
           </div>
           <div className="report-badges">
@@ -133,14 +139,25 @@ export function ReportView() {
           />
           <Metric label="IDP · SPI" value={metrics.spi.toFixed(2)} tone={metrics.spi >= 0.95 ? "ok" : metrics.spi >= 0.8 ? "warn" : "bad"} />
           <Metric label="ICP · CPI" value={metrics.cpi.toFixed(2)} tone={metrics.cpi >= 0.95 ? "ok" : metrics.cpi >= 0.8 ? "warn" : "bad"} />
+          <Metric label="SV" value={EUR.format(metrics.sv)} tone={metrics.sv >= 0 ? "ok" : "bad"} />
+          <Metric label="CV" value={EUR.format(metrics.cv)} tone={metrics.cv >= 0 ? "ok" : "bad"} />
         </section>
 
         <div className={`report-verdict ${verdict.tone}`}>
           <strong>Lecture PMO —</strong> {verdict.text}
           {project.baselineCapturedAt
-            ? ` Baseline de référence : ${fmtDate(project.baselineCapturedAt, true)}.`
+            ? ` Baseline de référence : ${fmtDate(project.baselineCapturedAt, true)}${
+                (project.baselines?.length ?? 0) > 0
+                  ? ` (${project.baselines!.length} archive${project.baselines!.length > 1 ? "s" : ""})`
+                  : ""
+              }.`
             : " Aucune baseline capturée : les écarts de planning ne sont pas mesurables."}
         </div>
+
+        <section className="report-section">
+          <h2>Courbes S</h2>
+          <EvmSCurve series={evmSeries} statusDate={statusDate} collapsible={false} />
+        </section>
 
         {/* Jalons */}
         <section className="report-section">

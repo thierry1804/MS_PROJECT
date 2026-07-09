@@ -87,6 +87,10 @@ export interface WireDemand {
   createdAt: string;
   convertedProjectId?: string;
   gateHistory?: WireGateRecord[];
+  budgetSponsor?: string;
+  desiredDate?: string;
+  dependsOnProjectId?: string;
+  strategicAxis?: string;
 }
 
 export interface WireAuditEntry {
@@ -105,6 +109,13 @@ export interface WireCustomFieldDef {
   name: string;
   type: string;
   options?: string[];
+}
+
+export interface WireBaselineVersion {
+  id: string;
+  name: string;
+  capturedAt: string;
+  tasks: Record<string, { start: string; finish: string; cost: number }>;
 }
 
 export interface WireProject {
@@ -126,6 +137,11 @@ export interface WireProject {
   timesheets: WireTimeEntry[];
   custom?: Record<string, string | number>;
   baselineCapturedAt?: string;
+  baselines?: WireBaselineVersion[];
+  evmStatusDate?: string;
+  progressMode?: "manual" | "milestones" | "effort";
+  strategicAxis?: string;
+  sourceDemandId?: string;
 }
 
 export interface WireGovernanceEvent {

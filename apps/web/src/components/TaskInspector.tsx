@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import {
   taskPlannedCost,
+  type CalendarDef,
   type ConstraintType,
   type DependencyType,
   type Resource,
@@ -8,7 +9,8 @@ import {
   type Task,
 } from "@atelier/scheduling-engine";
 import { durationCustomFields } from "../duration";
-import { EUR, fmtDate, type CustomFieldDef, type Project } from "../domain";
+import { EUR, fmtDate, todayISO, type CustomFieldDef, type Project } from "../domain";
+import { canEditTaskPercent, progressDiverges, scheduledPercentOf } from "../progress";
 
 const DEP_LABELS: Record<DependencyType, string> = {
   FS: "Fin → Début",
@@ -26,6 +28,7 @@ const CONSTRAINT_LABELS: Record<ConstraintType, string> = {
 interface Props {
   project: Project;
   schedule: ScheduleResult;
+  calendar?: CalendarDef;
   task: Task;
   resources: Resource[];
   customFields: CustomFieldDef[];
@@ -50,6 +53,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export function TaskInspector({
   project,
   schedule,
+  calendar,
   task,
   resources,
   customFields,
@@ -79,6 +83,11 @@ export function TaskInspector({
   const canMoveDown = !!onReorder && siblingIdx >= 0 && siblingIdx < siblings.length - 1;
 
   const isLeaf = !s.isSummary;
+  const pctEditable = canEditTaskPercent(project, schedule, task.id);
+  const statusDate = project.evmStatusDate ?? todayISO();
+  const cal = calendar ?? { workingWeekdays: [1, 2, 3, 4, 5], holidays: [] as string[] };
+  const plannedPct = scheduledPercentOf(task, schedule, cal, project.projectStart, statusDate);
+  const diverges = isLeaf && progressDiverges(task, schedule, cal, project.projectStart, statusDate);
   const plannedCost = taskPlannedCost(task, s.duration, resById);
   const ev = (plannedCost * task.percentComplete) / 100;
   const ac = task.actualCost ?? ev;
@@ -248,13 +257,16 @@ export function TaskInspector({
               <label className="insp-field">
                 <span className="insp-k">Avancement (%)</span>
                 <input
-                  key={`${task.id}-pct`}
+                  key={`${task.id}-pct-${task.percentComplete}`}
                   type="number"
                   min={0}
                   max={100}
                   className="insp-input tnum"
                   defaultValue={task.percentComplete}
+                  disabled={!pctEditable}
+                  title={!pctEditable ? "Mode guidé : repassez en Manuel pour éditer" : undefined}
                   onBlur={(e) => {
+                    if (!pctEditable) return;
                     const n = Math.max(0, Math.min(100, Math.round(Number(e.currentTarget.value))));
                     if (Number.isFinite(n) && n !== task.percentComplete)
                       onUpdate(task.id, { percentComplete: n });
@@ -263,12 +275,22 @@ export function TaskInspector({
               </label>
             </div>
           )}
+          {isLeaf && plannedPct != null && (
+            <p className={`insp-hint${diverges ? " warn" : ""}`}>
+              Planifié {plannedPct} % à la date de statut
+              {diverges ? " — écart notable vs saisi" : ""}
+              {!pctEditable ? " · mode guidé" : ""}
+            </p>
+          )}
           {s.isMilestone && (
             <label className="insp-check">
               <input
                 type="checkbox"
                 checked={task.percentComplete >= 100}
-                onChange={(e) => onUpdate(task.id, { percentComplete: e.target.checked ? 100 : 0 })}
+                disabled={!pctEditable}
+                onChange={(e) => {
+                  onUpdate(task.id, { percentComplete: e.target.checked ? 100 : 0 });
+                }}
               />
               Jalon atteint
             </label>

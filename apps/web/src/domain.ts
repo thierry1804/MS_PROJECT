@@ -109,6 +109,22 @@ export interface TimeEntry {
   days: number;
 }
 
+export type ProgressMode = "manual" | "milestones" | "effort";
+
+export const PROGRESS_MODE_LABELS: Record<ProgressMode, string> = {
+  manual: "Manuel",
+  milestones: "Jalons",
+  effort: "Effort",
+};
+
+/** Archived baseline snapshot (active baseline stays on task.baseline). */
+export interface BaselineVersion {
+  id: string;
+  name: string;
+  capturedAt: string;
+  tasks: Record<string, { start: string; finish: string; cost: number }>;
+}
+
 export interface Project {
   id: string;
   code: string;
@@ -132,8 +148,16 @@ export interface Project {
   custom?: Record<string, string | number>;
   /** ISO date when the baseline was last captured. */
   baselineCapturedAt?: string;
+  /** Archived baseline versions (active baseline remains on tasks). */
+  baselines?: BaselineVersion[];
+  /** ISO status date for EVM (PV/SPI). Absent = use today dynamically. */
+  evmStatusDate?: string;
+  /** How percentComplete is derived for leaf tasks. Default manual. */
+  progressMode?: ProgressMode;
   /** Axe stratégique groupe auquel le projet est rattaché (KPI d'alignement). */
   strategicAxis?: string;
+  /** Demande d'origine si le projet a été créé par conversion du pipeline. */
+  sourceDemandId?: string;
 }
 
 export type DemandStage = "idee" | "qualifiee" | "approuvee" | "rejetee";
@@ -189,6 +213,14 @@ export interface Demand {
   convertedProjectId?: string;
   /** Gate decisions recorded as the demand advanced through the pipeline. */
   gateHistory?: GateRecord[];
+  /** Sponsor budgétaire (peut différer du sponsor métier). */
+  budgetSponsor?: string;
+  /** Échéance souhaitée (ISO date). */
+  desiredDate?: string;
+  /** Projet existant dont dépend cette demande. */
+  dependsOnProjectId?: string;
+  /** Axe stratégique dès la demande (repris à la conversion). */
+  strategicAxis?: string;
 }
 
 /** Priority score: high value, low effort ranks first (0..25). */

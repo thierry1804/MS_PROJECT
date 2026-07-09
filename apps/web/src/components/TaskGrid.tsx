@@ -1,12 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { taskPlannedCost, type Resource, type ScheduleResult, type Task } from "@atelier/scheduling-engine";
+import {
+  taskPlannedCost,
+  type CalendarDef,
+  type Resource,
+  type ScheduleResult,
+  type Task,
+} from "@atelier/scheduling-engine";
 import { durationCustomFields, formatTaskDuration } from "../duration";
-import { fmtDate } from "../domain";
-import type { Project } from "../domain";
+import { fmtDate, todayISO, type Project } from "../domain";
+import { canEditTaskPercent, progressDiverges, scheduledPercentOf } from "../progress";
 
 interface Props {
   project: Project;
   schedule: ScheduleResult;
+  calendar?: CalendarDef;
   visibleIds: string[];
   collapsed: Record<string, boolean>;
   selectedTaskId: string | null;
@@ -68,6 +75,7 @@ function fmtDayDiff(d: number): string {
 export function TaskGrid({
   project,
   schedule,
+  calendar,
   visibleIds,
   collapsed,
   selectedTaskId,
@@ -83,6 +91,8 @@ export function TaskGrid({
   const [dropTarget, setDropTarget] = useState<{ id: string; place: "before" | "after" } | null>(null);
   const tasksById = new Map(project.tasks.map((t) => [t.id, t]));
   const canReorder = !!onReorder;
+  const statusDate = project.evmStatusDate ?? todayISO();
+  const cal = calendar ?? { workingWeekdays: [1, 2, 3, 4, 5], holidays: [] as string[] };
 
   const resourceMap = useMemo(
     () => new Map((resources ?? []).map((r) => [r.id, r])),
@@ -305,20 +315,43 @@ export function TaskGrid({
               <td className="num">{fmtDate(s.startDate)}</td>
               <td className="num">{fmtDate(s.finishDate)}</td>
               <td className="num">
-                {s.isSummary || s.isMilestone ? (
-                  <span className="ro">{s.isSummary ? "" : `${task.percentComplete} %`}</span>
-                ) : isEditing("percentComplete") ? (
-                  <EditableCell
-                    value={String(task.percentComplete)}
-                    numeric
-                    onCommit={(v) => commit(task, "percentComplete", v)}
-                    onCancel={() => setEdit(null)}
-                  />
-                ) : (
-                  <span onDoubleClick={() => setEdit({ taskId: id, field: "percentComplete" })}>
-                    {task.percentComplete} %
-                  </span>
-                )}
+                {(() => {
+                  const pctEditable = canEditTaskPercent(project, schedule, id);
+                  if (s.isSummary) return <span className="ro" />;
+                  if (isEditing("percentComplete") && pctEditable) {
+                    return (
+                      <EditableCell
+                        value={String(task.percentComplete)}
+                        numeric
+                        onCommit={(v) => commit(task, "percentComplete", v)}
+                        onCancel={() => setEdit(null)}
+                      />
+                    );
+                  }
+                  return (
+                    <span
+                      className={!pctEditable ? "ro" : undefined}
+                      title={
+                        progressDiverges(task, schedule, cal, project.projectStart, statusDate)
+                          ? `Planifié ${scheduledPercentOf(task, schedule, cal, project.projectStart, statusDate)} % à la date de statut`
+                          : !pctEditable
+                            ? "Avancement guidé (mode projet)"
+                            : undefined
+                      }
+                      onDoubleClick={() => {
+                        if (pctEditable) setEdit({ taskId: id, field: "percentComplete" });
+                      }}
+                    >
+                      {task.percentComplete} %
+                      {progressDiverges(task, schedule, cal, project.projectStart, statusDate) && (
+                        <span className="pct-diverge" aria-label="Diverge du planning">
+                          {" "}
+                          ≠
+                        </span>
+                      )}
+                    </span>
+                  );
+                })()}
               </td>
               {showVariance && (
                 <>

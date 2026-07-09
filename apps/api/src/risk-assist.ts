@@ -404,7 +404,7 @@ export async function testAiConnection(): Promise<{ ok: boolean; error?: string 
   if (!cfg.configured) return { ok: false, error: "Clé API non configurée." };
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), llmTimeoutMs(cfg.model));
+  const timeout = setTimeout(() => controller.abort(), llmTimeoutMs(cfg.model, false));
   try {
     const res = await fetch(`${cfg.baseUrl.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",

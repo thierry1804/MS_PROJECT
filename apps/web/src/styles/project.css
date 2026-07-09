@@ -35,6 +35,15 @@
   font-weight: 500;
 }
 
+.project-meta .pm-demand-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+.project-meta .pm-demand-link:hover {
+  text-decoration: underline;
+}
+
 .project-meta .pm-dot {
   width: 3px;
   height: 3px;
@@ -752,6 +761,278 @@
   background: var(--paper-2);
   margin: 0 4px;
 }
+
+.evm-status-date {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  background: var(--paper-0);
+  border: 1px solid var(--paper-2);
+  min-width: 140px;
+  gap: 2px;
+}
+
+.evm-status-date-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.evm-date-input {
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-0);
+  background: transparent;
+  border: none;
+  padding: 0;
+  max-width: 132px;
+}
+
+.evm-date-input:focus {
+  outline: none;
+}
+
+.evm-today-btn {
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ink-2);
+  background: transparent;
+  border: 1px solid var(--paper-2);
+  border-radius: 4px;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+
+.evm-today-btn:hover {
+  color: var(--ink-0);
+  border-color: var(--ink-3);
+}
+
+.tb-baseline-wrap {
+  position: relative;
+}
+
+.baseline-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  min-width: 240px;
+  background: var(--paper-0);
+  border: 1px solid var(--paper-2);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  padding: 4px;
+}
+
+.baseline-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: var(--fs-sm);
+  color: var(--ink-0);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+
+.baseline-menu > button:hover,
+.baseline-menu-activate:hover {
+  background: var(--paper-1);
+}
+
+.baseline-menu-sep {
+  height: 1px;
+  background: var(--paper-2);
+  margin: 4px 0;
+}
+
+.baseline-menu-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ink-3);
+  padding: 4px 10px 2px;
+}
+
+.baseline-menu-row {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.baseline-menu-activate {
+  flex: 1;
+  display: flex !important;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+
+.baseline-menu-date {
+  font-size: 10px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.baseline-menu-del {
+  width: 28px !important;
+  flex-shrink: 0;
+  color: var(--ink-3) !important;
+  font-size: 16px !important;
+  line-height: 1;
+  padding: 0 !important;
+}
+
+.baseline-menu-del:hover {
+  color: var(--critical, #a33) !important;
+  background: var(--paper-1);
+}
+
+.pm-progress-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+}
+
+.pm-progress-mode select {
+  font: inherit;
+  font-size: var(--fs-sm);
+  color: var(--ink-0);
+  background: var(--paper-0);
+  border: 1px solid var(--paper-2);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.pct-diverge {
+  color: var(--warn, #9a6b1a);
+  font-weight: 600;
+}
+
+/* ---------- EVM S-curve ---------- */
+.evm-scurve {
+  padding: 8px 32px 12px;
+  border-bottom: 1px solid var(--paper-2);
+  background: var(--paper-0);
+  flex-shrink: 0;
+}
+
+.evm-scurve.collapsed {
+  padding-bottom: 8px;
+}
+
+.evm-scurve-empty-msg {
+  margin: 4px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+}
+
+.evm-scurve-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 0;
+}
+
+.evm-scurve:not(.collapsed) .evm-scurve-head {
+  margin-bottom: 4px;
+}
+
+.evm-scurve-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.evm-scurve-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-2);
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.evm-scurve-toggle:hover {
+  color: var(--ink-0);
+}
+
+.evm-scurve-chevron {
+  font-size: 10px;
+  line-height: 1;
+  width: 10px;
+}
+
+.evm-scurve-legend {
+  display: flex;
+  gap: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.evm-scurve-legend .leg::before {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 2px;
+  margin-right: 4px;
+  vertical-align: middle;
+  background: currentColor;
+}
+
+.evm-scurve-legend .leg.pv { color: var(--ink-1); }
+.evm-scurve-legend .leg.ev { color: var(--ok, #2f6f4e); }
+.evm-scurve-legend .leg.ac { color: var(--critical, #a33); }
+
+.evm-scurve-svg {
+  width: 100%;
+  max-width: 720px;
+  height: auto;
+  display: block;
+}
+
+.scurve-grid {
+  stroke: var(--paper-2);
+  stroke-width: 1;
+}
+
+.scurve-tick {
+  font-size: 9px;
+  fill: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.scurve-status {
+  stroke: var(--ink-3);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.scurve-line {
+  stroke-width: 1.75;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.scurve-line.pv { stroke: var(--ink-1); }
+.scurve-line.ev { stroke: var(--ok, #2f6f4e); }
+.scurve-line.ac { stroke: var(--critical, #a33); }
 
 /* ---------- Variance cells ---------- */
 .var-cell {

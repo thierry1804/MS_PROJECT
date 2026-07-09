@@ -1,10 +1,12 @@
 import { create } from "zustand";
 import {
+  computeEvmSeries,
   computeMetrics,
   computeSchedule,
   levelResources,
   taskPlannedCost,
   type Dependency,
+  type EvmSeriesPoint,
   type ProjectMetrics,
   type Resource,
   type ScheduleResult,
@@ -23,8 +25,18 @@ import type {
   RaidKind,
   SurveyResponse,
 } from "./domain";
-import { DEMAND_STAGE_LABELS, HEALTH_LABELS, STATUS_LABELS, todayISO } from "./domain";
+import {
+  DEMAND_STAGE_LABELS,
+  HEALTH_LABELS,
+  STATUS_LABELS,
+  todayISO,
+  type BaselineVersion,
+  type ProgressMode,
+} from "./domain";
+import { applyProgressMode } from "./progress";
 import { fetchPortfolio, fetchCloudSyncStatus, logAudit, savePortfolio, triggerSyncNow } from "./sync";
+
+const MAX_BASELINE_VERSIONS = 10;
 
 const EMPTY_PORTFOLIO: Portfolio = {
   name: "Portefeuille",
@@ -94,9 +106,19 @@ interface AppState {
   toggleCollapse: (taskId: string) => void;
   updateTask: (projectId: string, taskId: string, patch: Partial<Task>) => void;
   /** Patch project-level fields (status, health, manager, …). */
-  updateProject: (projectId: string, patch: Partial<Pick<Project, "status" | "health" | "manager" | "name" | "description" | "budget" | "projectStart" | "strategicAxis">>) => void;
+  updateProject: (projectId: string, patch: Partial<Pick<Project, "status" | "health" | "manager" | "name" | "description" | "budget" | "projectStart" | "strategicAxis" | "evmStatusDate" | "progressMode">>) => void;
+  /** Set EVM status date; undefined clears to dynamic today. */
+  setEvmStatusDate: (projectId: string, date: string | undefined) => void;
+  /** Set progress mode and recompute leaf % when guided. */
+  setProgressMode: (projectId: string, mode: ProgressMode) => void;
+  /** Re-apply guided progress (e.g. after timesheets). */
+  applyGuidedProgress: (projectId: string) => void;
   /** Snapshot current schedule dates + planned costs into task.baseline fields. */
-  captureBaseline: (projectId: string) => void;
+  captureBaseline: (projectId: string, name?: string) => void;
+  /** Restore an archived baseline as the active comparison baseline. */
+  activateBaseline: (projectId: string, versionId: string) => void;
+  /** Remove an archived baseline version. */
+  deleteBaseline: (projectId: string, versionId: string) => void;
   /** Set task.actualCost (from timesheets / manual entry). */
   updateActualCost: (projectId: string, taskId: string, cost: number) => void;
   /** Add a dependency; no-op if it duplicates an existing predecessor→successor link. */
@@ -189,7 +211,15 @@ export const useStore = create<AppState>()((set, get) => ({
         ...s.portfolio,
         projects: s.portfolio.projects.map((p) => {
           if (p.id !== projectId) return p;
-          const updated = { ...p, tasks: p.tasks.map((t) => (t.id !== taskId ? t : { ...t, ...patch })) };
+          let updated: Project = {
+            ...p,
+            tasks: p.tasks.map((t) => (t.id !== taskId ? t : { ...t, ...patch })),
+          };
+          const mode = updated.progressMode ?? "manual";
+          if (mode === "milestones" && "percentComplete" in patch) {
+            const schedule = scheduleOf(updated, s.portfolio);
+            updated = { ...updated, tasks: applyProgressMode(updated, schedule, mode) };
+          }
           return maybePromoteToEnCours(updated);
         }),
       },
@@ -233,7 +263,59 @@ export const useStore = create<AppState>()((set, get) => ({
     }
   },
 
-  captureBaseline: (projectId) => {
+  setEvmStatusDate: (projectId, date) => {
+    set((s) => ({
+      portfolio: {
+        ...s.portfolio,
+        projects: s.portfolio.projects.map((p) =>
+          p.id !== projectId
+            ? p
+            : date
+              ? { ...p, evmStatusDate: date }
+              : (() => {
+                  const { evmStatusDate: _drop, ...rest } = p;
+                  return rest;
+                })(),
+        ),
+      },
+    }));
+  },
+
+  setProgressMode: (projectId, mode) => {
+    set((s) => {
+      const project = s.portfolio.projects.find((p) => p.id === projectId);
+      if (!project) return s;
+      const schedule = scheduleOf(project, s.portfolio);
+      const tasks = applyProgressMode({ ...project, progressMode: mode }, schedule, mode);
+      return {
+        portfolio: {
+          ...s.portfolio,
+          projects: s.portfolio.projects.map((p) =>
+            p.id !== projectId ? p : { ...p, progressMode: mode, tasks },
+          ),
+        },
+      };
+    });
+  },
+
+  applyGuidedProgress: (projectId) => {
+    set((s) => {
+      const project = s.portfolio.projects.find((p) => p.id === projectId);
+      if (!project) return s;
+      const mode = project.progressMode ?? "manual";
+      if (mode === "manual") return s;
+      const schedule = scheduleOf(project, s.portfolio);
+      const tasks = applyProgressMode(project, schedule, mode);
+      return {
+        portfolio: {
+          ...s.portfolio,
+          projects: s.portfolio.projects.map((p) => (p.id !== projectId ? p : { ...p, tasks })),
+        },
+      };
+    });
+  },
+
+  captureBaseline: (projectId, name) => {
     set((s) => {
       const project = s.portfolio.projects.find((p) => p.id === projectId);
       if (!project) return s;
@@ -241,6 +323,26 @@ export const useStore = create<AppState>()((set, get) => ({
       const rmap = new Map(s.portfolio.resources.map((r) => [r.id, r]));
       const d = new Date();
       const capturedAt = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+      let archives = [...(project.baselines ?? [])];
+      // Archive the current active baseline before overwriting.
+      if (project.baselineCapturedAt && project.tasks.some((t) => t.baseline)) {
+        const snapshotTasks: BaselineVersion["tasks"] = {};
+        for (const t of project.tasks) {
+          if (t.baseline) snapshotTasks[t.id] = { ...t.baseline };
+        }
+        const archived: BaselineVersion = {
+          id: `bl-${project.baselineCapturedAt}-${Math.random().toString(36).slice(2, 7)}`,
+          name: name?.trim() || `Baseline · ${project.baselineCapturedAt}`,
+          capturedAt: project.baselineCapturedAt,
+          tasks: snapshotTasks,
+        };
+        archives = [archived, ...archives.filter((b) => b.capturedAt !== project.baselineCapturedAt)].slice(
+          0,
+          MAX_BASELINE_VERSIONS,
+        );
+      }
+
       const tasks = project.tasks.map((t) => {
         const st = sched.tasks.get(t.id);
         if (!st || st.isSummary) return t;
@@ -253,15 +355,85 @@ export const useStore = create<AppState>()((set, get) => ({
         portfolio: {
           ...s.portfolio,
           projects: s.portfolio.projects.map((p) =>
-            p.id !== projectId ? p : { ...p, tasks, baselineCapturedAt: capturedAt },
+            p.id !== projectId ? p : { ...p, tasks, baselineCapturedAt: capturedAt, baselines: archives },
           ),
         },
       };
     });
     const project = get().portfolio.projects.find((p) => p.id === projectId);
     if (project) {
-      void logAudit({ entityType: "project", entityId: projectId, action: "baseline", summary: `Baseline capturée : ${project.name}` });
+      void logAudit({
+        entityType: "project",
+        entityId: projectId,
+        action: "baseline",
+        summary: `Baseline capturée : ${project.name}`,
+      });
     }
+  },
+
+  activateBaseline: (projectId, versionId) => {
+    set((s) => {
+      const project = s.portfolio.projects.find((p) => p.id === projectId);
+      if (!project) return s;
+      const version = (project.baselines ?? []).find((b) => b.id === versionId);
+      if (!version) return s;
+
+      let archives = [...(project.baselines ?? [])];
+      // Push current active into history before switching.
+      if (project.baselineCapturedAt && project.tasks.some((t) => t.baseline)) {
+        const snapshotTasks: BaselineVersion["tasks"] = {};
+        for (const t of project.tasks) {
+          if (t.baseline) snapshotTasks[t.id] = { ...t.baseline };
+        }
+        const archived: BaselineVersion = {
+          id: `bl-${project.baselineCapturedAt}-${Math.random().toString(36).slice(2, 7)}`,
+          name: `Baseline · ${project.baselineCapturedAt}`,
+          capturedAt: project.baselineCapturedAt,
+          tasks: snapshotTasks,
+        };
+        archives = [archived, ...archives.filter((b) => b.id !== versionId)].slice(0, MAX_BASELINE_VERSIONS);
+      } else {
+        archives = archives.filter((b) => b.id !== versionId);
+      }
+
+      const tasks = project.tasks.map((t) => {
+        const snap = version.tasks[t.id];
+        if (!snap) {
+          const { baseline: _b, ...rest } = t;
+          return rest as Task;
+        }
+        return { ...t, baseline: { ...snap } };
+      });
+
+      return {
+        portfolio: {
+          ...s.portfolio,
+          projects: s.portfolio.projects.map((p) =>
+            p.id !== projectId
+              ? p
+              : {
+                  ...p,
+                  tasks,
+                  baselineCapturedAt: version.capturedAt,
+                  baselines: archives,
+                },
+          ),
+        },
+      };
+    });
+  },
+
+  deleteBaseline: (projectId, versionId) => {
+    set((s) => ({
+      portfolio: {
+        ...s.portfolio,
+        projects: s.portfolio.projects.map((p) =>
+          p.id !== projectId
+            ? p
+            : { ...p, baselines: (p.baselines ?? []).filter((b) => b.id !== versionId) },
+        ),
+      },
+    }));
   },
 
   updateActualCost: (projectId, taskId, cost) => {
@@ -406,17 +578,21 @@ export const useStore = create<AppState>()((set, get) => ({
       const taskCost = sheets
         .filter((e) => e.taskId === taskId)
         .reduce((sum, e) => sum + e.days * rateOf(e.resourceId), 0);
+      const withSheets: Project = {
+        ...project,
+        timesheets: sheets,
+        tasks: project.tasks.map((t) => (t.id !== taskId ? t : { ...t, actualCost: taskCost })),
+      };
+      const mode = withSheets.progressMode ?? "manual";
+      const tasks =
+        mode === "effort"
+          ? applyProgressMode(withSheets, scheduleOf(withSheets, s.portfolio), mode)
+          : withSheets.tasks;
       return {
         portfolio: {
           ...s.portfolio,
           projects: s.portfolio.projects.map((p) =>
-            p.id !== projectId
-              ? p
-              : {
-                  ...p,
-                  timesheets: sheets,
-                  tasks: p.tasks.map((t) => (t.id !== taskId ? t : { ...t, actualCost: taskCost })),
-                },
+            p.id !== projectId ? p : { ...withSheets, tasks },
           ),
         },
       };
@@ -638,6 +814,8 @@ export const useStore = create<AppState>()((set, get) => ({
       actions: [],
       issues: [],
       decisions: [],
+      sourceDemandId: demand.id,
+      ...(demand.strategicAxis ? { strategicAxis: demand.strategicAxis } : {}),
     });
     set((s) => ({
       portfolio: {
@@ -1015,15 +1193,30 @@ export function scheduleOf(project: Project, portfolio: Portfolio): ScheduleResu
   return r;
 }
 
+/** Effective EVM status date for a project (explicit or today). */
+export function statusDateOf(project: Project): string {
+  return project.evmStatusDate ?? todayISO();
+}
+
 export function metricsOf(project: Project, portfolio: Portfolio): ProjectMetrics {
   let m = metricsCache.get(project);
   if (!m) {
     m = computeMetrics(project.tasks, scheduleOf(project, portfolio), portfolio.resources, {
       calendar: portfolio.calendar,
       projectStart: project.projectStart,
-      statusDate: todayISO(),
+      statusDate: statusDateOf(project),
     });
     metricsCache.set(project, m);
   }
   return m;
+}
+
+/** Weekly PV/EV/AC series for S-curves. */
+export function evmSeriesOf(project: Project, portfolio: Portfolio): EvmSeriesPoint[] {
+  return computeEvmSeries(project.tasks, scheduleOf(project, portfolio), portfolio.resources, {
+    calendar: portfolio.calendar,
+    projectStart: project.projectStart,
+    statusDate: statusDateOf(project),
+    timesheets: project.timesheets,
+  });
 }

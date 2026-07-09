@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { detectOverallocations } from "@atelier/scheduling-engine";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { EvmSCurve } from "../components/EvmSCurve";
 import { Gantt, GanttHeader } from "../components/Gantt";
 import { TaskGrid } from "../components/TaskGrid";
 import { TaskInspector } from "../components/TaskInspector";
@@ -25,9 +26,17 @@ import { exportProjectCsv } from "../export";
 import { parseImportFile } from "../import-file";
 import type { Task } from "@atelier/scheduling-engine";
 import type { Dependency } from "@atelier/scheduling-engine";
-import { EUR, fmtDate, todayISO, type Portfolio, type Project } from "../domain";
+import {
+  EUR,
+  fmtDate,
+  PROGRESS_MODE_LABELS,
+  todayISO,
+  type Portfolio,
+  type ProgressMode,
+  type Project,
+} from "../domain";
 import { buildRange } from "../gantt-utils";
-import { metricsOf, scheduleOf, useStore } from "../store";
+import { evmSeriesOf, metricsOf, scheduleOf, useStore } from "../store";
 import "../styles/project.css";
 import "../styles/inspector.css";
 
@@ -68,6 +77,10 @@ function ProjectViewBody({ project, portfolio }: { project: Project; portfolio: 
   const addDependency = useStore((s) => s.addDependency);
   const removeDependency = useStore((s) => s.removeDependency);
   const captureBaseline = useStore((s) => s.captureBaseline);
+  const activateBaseline = useStore((s) => s.activateBaseline);
+  const deleteBaseline = useStore((s) => s.deleteBaseline);
+  const setEvmStatusDate = useStore((s) => s.setEvmStatusDate);
+  const setProgressMode = useStore((s) => s.setProgressMode);
   const applyLeveling = useStore((s) => s.applyLeveling);
   const addTask = useStore((s) => s.addTask);
   const addSubTask = useStore((s) => s.addSubTask);
@@ -85,14 +98,26 @@ function ProjectViewBody({ project, portfolio }: { project: Project; portfolio: 
   const [pendingImportDeps, setPendingImportDeps] = useState<Dependency[] | null>(null);
   const [importErrors, setImportErrors] = useState<string | null>(null);
   const [exportingGantt, setExportingGantt] = useState(false);
+  const [baselineMenuOpen, setBaselineMenuOpen] = useState(false);
 
   const importInputRef = useRef<HTMLInputElement>(null);
+  const baselineMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!baselineMenuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!baselineMenuRef.current?.contains(e.target as Node)) setBaselineMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [baselineMenuOpen]);
 
   const gridBodyRef = useRef<HTMLDivElement>(null);
   const ganttHeadRef = useRef<HTMLDivElement>(null);
 
   const schedule = scheduleOf(project, portfolio);
   const metrics = metricsOf(project, portfolio);
+  const evmSeries = useMemo(() => evmSeriesOf(project, portfolio), [project, portfolio]);
 
   const tasksById = useMemo(() => new Map(project.tasks.map((t) => [t.id, t])), [project.tasks]);
   const visibleIds = useMemo(() => {
@@ -114,6 +139,7 @@ function ProjectViewBody({ project, portfolio }: { project: Project; portfolio: 
 
   const dw = ZOOMS[zoom]!.dw;
   const today = todayISO();
+  const statusDate = project.evmStatusDate ?? today;
   const selectedTask = selectedTaskId ? tasksById.get(selectedTaskId) ?? null : null;
 
   const overallocations = useMemo(
@@ -228,17 +254,76 @@ function ProjectViewBody({ project, portfolio }: { project: Project; portfolio: 
           </div>
 
           <div className="tb-cluster" role="group" aria-label="Analyse">
-            <button
-              className={`tb-btn${project.baselineCapturedAt ? " on" : ""}`}
-              onClick={() => captureBaseline(project.id)}
-              title="Capturer la baseline pour le suivi des écarts"
-              aria-label="Capturer la baseline"
-            >
-              <FlagIcon />
-              <span className="tb-label tier1">
-                {project.baselineCapturedAt ? `Baseline · ${fmtDate(project.baselineCapturedAt)}` : "Capturer baseline"}
-              </span>
-            </button>
+            <div className="tb-baseline-wrap" ref={baselineMenuRef}>
+              <button
+                className={`tb-btn${project.baselineCapturedAt ? " on" : ""}`}
+                onClick={() => setBaselineMenuOpen((o) => !o)}
+                title="Baseline : capturer, historique, activer pour comparaison"
+                aria-label="Menu baseline"
+                aria-expanded={baselineMenuOpen}
+              >
+                <FlagIcon />
+                <span className="tb-label tier1">
+                  {project.baselineCapturedAt
+                    ? `Baseline · ${fmtDate(project.baselineCapturedAt)}`
+                    : "Baseline"}
+                  {(project.baselines?.length ?? 0) > 0 ? ` · ${project.baselines!.length}` : ""}
+                </span>
+              </button>
+              {baselineMenuOpen && (
+                <div className="baseline-menu" role="menu">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      const label = window.prompt(
+                        "Nom de la baseline actuelle à archiver (optionnel)",
+                        project.baselineCapturedAt
+                          ? `Baseline · ${project.baselineCapturedAt}`
+                          : "Baseline",
+                      );
+                      if (label === null) return;
+                      captureBaseline(project.id, label.trim() || undefined);
+                      setBaselineMenuOpen(false);
+                    }}
+                  >
+                    Capturer le planning actuel
+                  </button>
+                  {(project.baselines?.length ?? 0) > 0 && (
+                    <>
+                      <div className="baseline-menu-sep" />
+                      <div className="baseline-menu-label">Historique</div>
+                      {project.baselines!.map((b) => (
+                        <div key={b.id} className="baseline-menu-row">
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className="baseline-menu-activate"
+                            title="Activer pour comparaison Gantt / écarts"
+                            onClick={() => {
+                              activateBaseline(project.id, b.id);
+                              setBaselineMenuOpen(false);
+                            }}
+                          >
+                            {b.name}
+                            <span className="baseline-menu-date">{fmtDate(b.capturedAt)}</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="baseline-menu-del"
+                            title="Supprimer cette archive"
+                            aria-label={`Supprimer ${b.name}`}
+                            onClick={() => deleteBaseline(project.id, b.id)}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
             <button
               className={`tb-btn${showVariance ? " on" : ""}`}
               onClick={() => setShowVariance((v) => !v)}
@@ -343,6 +428,14 @@ function ProjectViewBody({ project, portfolio }: { project: Project; portfolio: 
 
         <div className="project-meta tnum">
           <span className="pm-owner">{project.manager}</span>
+          {project.sourceDemandId && (
+            <>
+              <span className="pm-dot" />
+              <Link className="pm-demand-link" to="/demandes" title="Voir le pipeline de demandes">
+                Issu d’une demande
+              </Link>
+            </>
+          )}
           <span className="pm-dot" />
           <span>
             {fmtDate(project.projectStart, true)} <span className="pm-arrow">→</span>{" "}
@@ -355,6 +448,21 @@ function ProjectViewBody({ project, portfolio }: { project: Project; portfolio: 
           </span>
           <span className="pm-dot" />
           <span>{Math.round(metrics.percentComplete)} % réalisé</span>
+          <span className="pm-dot" />
+          <label className="pm-progress-mode">
+            Avancement
+            <select
+              value={project.progressMode ?? "manual"}
+              onChange={(e) => setProgressMode(project.id, e.target.value as ProgressMode)}
+              aria-label="Mode d’avancement"
+            >
+              {(Object.keys(PROGRESS_MODE_LABELS) as ProgressMode[]).map((m) => (
+                <option key={m} value={m}>
+                  {PROGRESS_MODE_LABELS[m]}
+                </option>
+              ))}
+            </select>
+          </label>
           {metrics.criticalCount > 0 && (
             <span className="crit-count">
               {metrics.criticalCount} tâche{metrics.criticalCount > 1 ? "s" : ""} critique
@@ -370,27 +478,53 @@ function ProjectViewBody({ project, portfolio }: { project: Project; portfolio: 
       </div>
 
       <div className="evm-strip tnum">
+        <div className="evm-status-date" title="Date à laquelle le PV (et donc SPI/SV) est mesuré">
+          <span className="evm-label">Date de statut</span>
+          <div className="evm-status-date-row">
+            <input
+              type="date"
+              className="evm-date-input"
+              value={statusDate}
+              onChange={(e) => {
+                const v = e.target.value;
+                setEvmStatusDate(project.id, v || undefined);
+              }}
+              aria-label="Date de statut EVM"
+            />
+            {project.evmStatusDate && project.evmStatusDate !== today && (
+              <button
+                type="button"
+                className="evm-today-btn"
+                onClick={() => setEvmStatusDate(project.id, undefined)}
+                title="Revenir à aujourd’hui (dynamique)"
+              >
+                Aujourd’hui
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="evm-sep" />
         <div className="evm-chip" title="Budget At Completion : budget total approuvé pour l'ensemble du projet, tel que planifié à l'origine.">
           <span className="evm-label">BAC</span>
           <span className="evm-value">{EUR.format(metrics.bac)}</span>
         </div>
         <div
           className="evm-chip"
-          title="Planned Value : coût du travail qui devrait être fait à la date du jour, selon le planning initial."
+          title={`Planned Value : coût du travail qui devrait être fait au ${fmtDate(statusDate, true)}, selon le planning.`}
         >
           <span className="evm-label">VP (PV)</span>
           <span className="evm-value">{EUR.format(metrics.pv)}</span>
         </div>
         <div
           className="evm-chip"
-          title="Earned Value : valeur budgétée du travail réellement accompli à ce jour (indépendant du coût réel dépensé)."
+          title={`Earned Value : valeur budgétée du travail réellement accompli au ${fmtDate(statusDate, true)}.`}
         >
           <span className="evm-label">VA (EV)</span>
           <span className="evm-value">{EUR.format(metrics.earnedValue)}</span>
         </div>
         <div
           className="evm-chip"
-          title="Actual Cost : coût réellement dépensé à ce jour pour le travail accompli (issu des feuilles de temps et coûts saisis)."
+          title={`Actual Cost : coût réellement dépensé au ${fmtDate(statusDate, true)} (feuilles de temps et coûts saisis).`}
         >
           <span className="evm-label">CR (AC)</span>
           <span className="evm-value">{EUR.format(metrics.ac)}</span>
@@ -405,10 +539,24 @@ function ProjectViewBody({ project, portfolio }: { project: Project; portfolio: 
         </div>
         <div
           className="evm-chip"
+          title="Écart délais = VA − VP. Négatif = retard par rapport au plan à la date de statut."
+        >
+          <span className="evm-label">SV</span>
+          <span className={`evm-value ${metrics.sv >= 0 ? "evm-good" : "evm-bad"}`}>{EUR.format(metrics.sv)}</span>
+        </div>
+        <div
+          className="evm-chip"
           title="Indice de performance coûts = VA ÷ CR. Égal à 1 : dans le budget. En dessous de 1 : le travail coûte plus cher que prévu."
         >
           <span className="evm-label">ICP (CPI)</span>
           <span className={`evm-value ${evmClass(metrics.cpi)}`}>{metrics.cpi.toFixed(2)}</span>
+        </div>
+        <div
+          className="evm-chip"
+          title="Écart coûts = VA − CR. Négatif = dépassement de coût."
+        >
+          <span className="evm-label">CV</span>
+          <span className={`evm-value ${metrics.cv >= 0 ? "evm-good" : "evm-bad"}`}>{EUR.format(metrics.cv)}</span>
         </div>
         <div className="evm-sep" />
         <div
@@ -426,6 +574,8 @@ function ProjectViewBody({ project, portfolio }: { project: Project; portfolio: 
           <span className={`evm-value ${metrics.etc < 0 ? "evm-good" : ""}`}>{EUR.format(metrics.etc)}</span>
         </div>
       </div>
+
+      <EvmSCurve series={evmSeries} statusDate={statusDate} />
 
       <div className="project-split">
         <div className="grid-pane">
@@ -459,6 +609,7 @@ function ProjectViewBody({ project, portfolio }: { project: Project; portfolio: 
             <TaskGrid
               project={project}
               schedule={schedule}
+              calendar={portfolio.calendar}
               visibleIds={visibleIds}
               collapsed={collapsed}
               selectedTaskId={selectedTaskId}
@@ -500,6 +651,7 @@ function ProjectViewBody({ project, portfolio }: { project: Project; portfolio: 
           <TaskInspector
             project={project}
             schedule={schedule}
+            calendar={portfolio.calendar}
             task={selectedTask}
             resources={portfolio.resources}
             customFields={portfolio.customFields ?? []}

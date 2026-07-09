@@ -15,10 +15,11 @@ export function buildProjectContext(project: Project, portfolio: Portfolio): Pro
     calendar: portfolio.calendar,
     projectStart: project.projectStart,
   });
+  const statusDate = project.evmStatusDate ?? todayISO();
   const metrics = computeMetrics(project.tasks, schedule, portfolio.resources, {
     calendar: portfolio.calendar,
     projectStart: project.projectStart,
-    statusDate: todayISO(),
+    statusDate,
   });
   const today = todayISO();
 

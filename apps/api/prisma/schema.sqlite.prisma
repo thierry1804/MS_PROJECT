@@ -61,6 +61,11 @@ model Project {
   budget             Float
   projectStart       String    @map("project_start")
   baselineCapturedAt String?   @map("baseline_captured_at")
+  baselines          Json?
+  evmStatusDate      String?   @map("evm_status_date")
+  progressMode       String?   @map("progress_mode")
+  strategicAxis      String?   @map("strategic_axis")
+  sourceDemandId     String?   @map("source_demand_id")
   custom             Json?
 
   tasks        Task[]
@@ -217,6 +222,10 @@ model Demand {
   createdAt          String    @map("created_at")
   convertedProjectId String?   @map("converted_project_id")
   gateHistory        Json?     @map("gate_history")
+  budgetSponsor      String?   @map("budget_sponsor")
+  desiredDate        String?   @map("desired_date")
+  dependsOnProjectId String?   @map("depends_on_project_id")
+  strategicAxis      String?   @map("strategic_axis")
 
   @@index([portfolioId])
   @@map("demand")

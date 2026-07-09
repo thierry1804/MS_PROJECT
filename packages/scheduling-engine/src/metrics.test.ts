@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CALENDAR } from "./calendar";
 import { computeSchedule } from "./cpm";
-import { computeMetrics } from "./metrics";
+import { computeEvmSeries, computeMetrics } from "./metrics";
 import type { Dependency, Resource, Task } from "./types";
 
 const dev: Resource = { id: "r1", name: "Dev", kind: "work", capacity: 1, costPerDay: 100 };
@@ -78,5 +78,51 @@ describe("EVM metrics", () => {
     expect(m.ac).toBe(800);
     expect(m.cpi).toBeCloseTo(0.625, 3);
     expect(m.eac).toBeCloseTo(1600, 0); // BAC / CPI = 1000 / 0.625
+  });
+});
+
+describe("EVM S-curve series", () => {
+  it("PV is non-decreasing and ends near BAC", () => {
+    const tasks = [leaf("a", 0, 10, 100), leaf("b", 1, 10, 50)];
+    const deps: Dependency[] = [{ predecessorId: "a", successorId: "b", type: "FS", lag: 0 }];
+    const schedule = computeSchedule({
+      tasks,
+      dependencies: deps,
+      calendar: DEFAULT_CALENDAR,
+      projectStart: "2026-01-05",
+    });
+    const series = computeEvmSeries(tasks, schedule, [dev], {
+      calendar: DEFAULT_CALENDAR,
+      projectStart: "2026-01-05",
+      statusDate: "2026-01-20",
+    });
+    expect(series.length).toBeGreaterThan(2);
+    for (let i = 1; i < series.length; i++) {
+      expect(series[i]!.pv).toBeGreaterThanOrEqual(series[i - 1]!.pv - 1e-6);
+    }
+    expect(series[series.length - 1]!.pv).toBeCloseTo(2000, 0);
+  });
+
+  it("AC follows timesheet cumulative cost", () => {
+    const tasks = [leaf("a", 0, 10, 50, { actualCost: 999 })];
+    const schedule = computeSchedule({
+      tasks,
+      dependencies: [],
+      calendar: DEFAULT_CALENDAR,
+      projectStart: "2026-01-05",
+    });
+    const series = computeEvmSeries(tasks, schedule, [dev], {
+      calendar: DEFAULT_CALENDAR,
+      projectStart: "2026-01-05",
+      statusDate: "2026-01-20",
+      timesheets: [
+        { taskId: "a", resourceId: "r1", weekStart: "2026-01-05", days: 3 },
+        { taskId: "a", resourceId: "r1", weekStart: "2026-01-12", days: 2 },
+      ],
+    });
+    const beforeSecond = series.find((p) => p.date === "2026-01-05");
+    const afterSecond = series.find((p) => p.date >= "2026-01-12");
+    expect(beforeSecond?.ac).toBe(300);
+    expect(afterSecond?.ac).toBeGreaterThanOrEqual(500);
   });
 });
