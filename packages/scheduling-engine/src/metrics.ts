@@ -1,4 +1,4 @@
-import { dateToIndex, isWorkingDay, parseISO, toISO } from "./calendar";
+import { dateToIndex, indexToDate, isWorkingDay, parseISO, toISO } from "./calendar";
 import type { CalendarDef, Resource, ScheduleResult, Task } from "./types";
 
 const DAY_MS = 86_400_000;
@@ -70,6 +70,29 @@ export interface ProjectMetrics {
   sv: number;
   /** Cost variance: EV − AC. */
   cv: number;
+  /**
+   * Projected finish from current pace (linear extrapolation on weighted % complete).
+   * Null when progress is 0, the project has not started, or no status date is supplied.
+   */
+  landingDate: string | null;
+}
+
+/**
+ * Projected finish from current pace: if X % is done in N working days since start,
+ * total duration ≈ N / (X / 100). Requires a status date and progress > 0.
+ */
+export function computeLandingDate(
+  calendar: CalendarDef,
+  projectStart: string,
+  statusDate: string,
+  percentComplete: number,
+): string | null {
+  if (percentComplete >= 100) return statusDate;
+  if (percentComplete <= 0) return null;
+  const elapsed = dateToIndex(calendar, projectStart, statusDate);
+  if (elapsed <= 0) return null;
+  const totalDays = Math.ceil(elapsed / (percentComplete / 100));
+  return indexToDate(calendar, projectStart, totalDays);
 }
 
 /** Fraction of a leaf task scheduled to be done by the status date, 0..1. */
@@ -125,12 +148,17 @@ export function computeMetrics(
   const etc = eac - ac;
   const sv = earnedValue - pv;
   const cv = earnedValue - ac;
+  const percentComplete = weight > 0 ? weightedPct / weight : 0;
+  const landingDate =
+    evm != null
+      ? computeLandingDate(evm.calendar, evm.projectStart, evm.statusDate, percentComplete)
+      : null;
 
   return {
     plannedCost,
     earnedValue,
     pv,
-    percentComplete: weight > 0 ? weightedPct / weight : 0,
+    percentComplete,
     taskCount: leafCount,
     milestoneCount,
     criticalCount,
@@ -142,6 +170,7 @@ export function computeMetrics(
     etc,
     sv,
     cv,
+    landingDate,
   };
 }
 

@@ -292,6 +292,7 @@ export function DashboardView() {
                 <th>Santé</th>
                 <th>Avancement</th>
                 <th className="num">Échéance</th>
+                <th className="num">Atterrissage</th>
                 <th className="num">Budget</th>
                 <th className="num">Coût plan</th>
                 <th className="num">IDP</th>
@@ -327,6 +328,16 @@ export function DashboardView() {
                       <ProgressBar value={metrics.percentComplete} />
                     </td>
                     <td className="num">{fmtDate(schedule.projectFinishDate, true)}</td>
+                    <td
+                      className={`num${metrics.landingDate && metrics.landingDate > schedule.projectFinishDate ? " over" : ""}`}
+                      title={
+                        metrics.landingDate
+                          ? `Projection au rythme actuel (${Math.round(metrics.percentComplete)} % réalisé)`
+                          : "Projection indisponible (avancement nul ou projet non démarré)"
+                      }
+                    >
+                      {metrics.landingDate ? fmtDate(metrics.landingDate, true) : "—"}
+                    </td>
                     <td className="num">{EUR.format(project.budget)}</td>
                     <td className={`num${overBudget ? " over" : ""}`}>
                       {EUR.format(metrics.plannedCost)}

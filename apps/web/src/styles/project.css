@@ -30,6 +30,11 @@
   color: var(--ink-2);
 }
 
+.project-meta .landing-late {
+  color: var(--critical);
+  font-weight: 500;
+}
+
 .project-meta .pm-owner {
   color: var(--ink-1);
   font-weight: 500;

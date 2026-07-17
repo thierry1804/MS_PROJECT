@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CALENDAR } from "./calendar";
 import { computeSchedule } from "./cpm";
-import { computeEvmSeries, computeMetrics } from "./metrics";
+import { computeEvmSeries, computeLandingDate, computeMetrics } from "./metrics";
 import type { Dependency, Resource, Task } from "./types";
 
 const dev: Resource = { id: "r1", name: "Dev", kind: "work", capacity: 1, costPerDay: 100 };
@@ -78,6 +78,39 @@ describe("EVM metrics", () => {
     expect(m.ac).toBe(800);
     expect(m.cpi).toBeCloseTo(0.625, 3);
     expect(m.eac).toBeCloseTo(1600, 0); // BAC / CPI = 1000 / 0.625
+  });
+});
+
+describe("landing date", () => {
+  it("extrapolates finish from elapsed time and % complete", () => {
+    // 10-day task, 50% done at day 5 → projected total 10 days → finish day 10.
+    const landing = computeLandingDate(DEFAULT_CALENDAR, "2026-01-05", "2026-01-12", 50);
+    expect(landing).toBe("2026-01-19"); // 10e jour ouvré depuis le 5 jan.
+  });
+
+  it("returns null when progress is zero", () => {
+    expect(computeLandingDate(DEFAULT_CALENDAR, "2026-01-05", "2026-01-12", 0)).toBeNull();
+  });
+
+  it("returns status date when project is complete", () => {
+    expect(computeLandingDate(DEFAULT_CALENDAR, "2026-01-05", "2026-01-12", 100)).toBe("2026-01-12");
+  });
+
+  it("is included in computeMetrics", () => {
+    const tasks = [leaf("a", 0, 20, 50)];
+    const schedule = computeSchedule({
+      tasks,
+      dependencies: [],
+      calendar: DEFAULT_CALENDAR,
+      projectStart: "2026-01-05",
+    });
+    const m = computeMetrics(tasks, schedule, [dev], {
+      calendar: DEFAULT_CALENDAR,
+      projectStart: "2026-01-05",
+      statusDate: "2026-01-16",
+    });
+    expect(m.landingDate).toBeTruthy();
+    expect(m.landingDate! >= "2026-01-16").toBe(true);
   });
 });
 

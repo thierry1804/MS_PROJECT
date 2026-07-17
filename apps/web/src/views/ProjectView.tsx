@@ -448,6 +448,26 @@ function ProjectViewBody({ project, portfolio }: { project: Project; portfolio: 
           </span>
           <span className="pm-dot" />
           <span>{Math.round(metrics.percentComplete)} % réalisé</span>
+          {metrics.landingDate && (
+            <>
+              <span className="pm-dot" />
+              <span
+                className={metrics.landingDate > schedule.projectFinishDate ? "landing-late" : undefined}
+                title={`Projection linéaire au ${fmtDate(statusDate, true)} (${Math.round(metrics.percentComplete)} % réalisé)`}
+              >
+                Atterrissage {fmtDate(metrics.landingDate, true)}
+                {(() => {
+                  const slip = Math.round(
+                    (Date.parse(`${metrics.landingDate}T00:00:00Z`) -
+                      Date.parse(`${schedule.projectFinishDate}T00:00:00Z`)) /
+                      86_400_000,
+                  );
+                  if (slip === 0) return null;
+                  return slip > 0 ? ` · +${slip} j vs plan` : ` · ${slip} j vs plan`;
+                })()}
+              </span>
+            </>
+          )}
           <span className="pm-dot" />
           <label className="pm-progress-mode">
             Avancement

@@ -129,7 +129,23 @@ export function ReportView() {
         {/* Synthèse chiffrée */}
         <section className="report-grid">
           <Metric label="Avancement" value={`${Math.round(metrics.percentComplete)} %`} />
-          <Metric label="Échéance projetée" value={fmtDate(schedule.projectFinishDate, true)} />
+          <Metric label="Échéance planifiée" value={fmtDate(schedule.projectFinishDate, true)} />
+          <Metric
+            label="Atterrissage"
+            value={metrics.landingDate ? fmtDate(metrics.landingDate, true) : "—"}
+            tone={
+              metrics.landingDate && metrics.landingDate > schedule.projectFinishDate
+                ? "bad"
+                : metrics.landingDate && metrics.landingDate < schedule.projectFinishDate
+                  ? "ok"
+                  : undefined
+            }
+            hint={
+              metrics.landingDate
+                ? `Projection au rythme actuel (${Math.round(metrics.percentComplete)} % au ${fmtDate(statusDate, true)})`
+                : "Avancement nul ou projet non démarré"
+            }
+          />
           <Metric label="Budget approuvé" value={EUR.format(project.budget)} />
           <Metric
             label="Coût à terminaison (EAC)"
