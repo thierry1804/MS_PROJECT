@@ -14,6 +14,7 @@ import {
   type CloudSyncStatus,
   type DatabaseConfigStatus,
 } from "../sync";
+import { isDesktopShell } from "../api-url";
 import { useStore } from "../store";
 import "../styles/settings.css";
 
@@ -102,6 +103,8 @@ export function SettingsView() {
   const [aiTesting, setAiTesting] = useState(false);
   const [aiMessage, setAiMessage] = useState<string | null>(null);
   const [aiSaved, setAiSaved] = useState(false);
+
+  const desktopMode = isDesktopShell() || Boolean(cloudStatus?.desktop);
 
   useEffect(() => {
     setAppName(portfolio.appName ?? "Atelier");
@@ -312,16 +315,19 @@ export function SettingsView() {
 
           <section className="set-card">
             <div className="set-card-head">
-              <h2>{cloudStatus?.desktop ? "Base locale" : "Base de données Neon"}</h2>
+              <h2>{desktopMode ? "Base locale" : "Base de données Neon"}</h2>
               <p className="set-hint">
-                {cloudStatus?.desktop
+                {desktopMode
                   ? "SQLite embarquée dans le profil utilisateur. Fonctionne hors ligne."
                   : "Connexion PostgreSQL côté serveur. Prioritaire sur le fichier `.env`."}
               </p>
             </div>
 
-            {dbError && !cloudStatus?.desktop && (
+            {dbError && !desktopMode && (
               <div className="set-callout warn">API hors ligne — impossible de lire la configuration actuelle.</div>
+            )}
+            {dbError && desktopMode && (
+              <div className="set-callout warn">API locale indisponible — redémarrez l'application.</div>
             )}
 
             {dbStatus && (
@@ -335,12 +341,12 @@ export function SettingsView() {
                 {dbStatus.configured && (
                   <>
                     <div className="set-status-row">
-                      <dt>{cloudStatus?.desktop ? "Fichier" : "Pooler"}</dt>
+                      <dt>{desktopMode ? "Fichier" : "Pooler"}</dt>
                       <dd className="set-url" title={dbStatus.databaseUrlMasked}>
                         {dbStatus.databaseUrlMasked}
                       </dd>
                     </div>
-                    {!cloudStatus?.desktop && dbStatus.directUrlMasked !== dbStatus.databaseUrlMasked && (
+                    {!desktopMode && dbStatus.directUrlMasked !== dbStatus.databaseUrlMasked && (
                       <div className="set-status-row">
                         <dt>Direct</dt>
                         <dd className="set-url" title={dbStatus.directUrlMasked}>
@@ -353,7 +359,7 @@ export function SettingsView() {
               </dl>
             )}
 
-            {!cloudStatus?.desktop && (
+            {!desktopMode && (
               <>
                 <div className="set-callout">
                   La connexion est testée et appliquée automatiquement — aucun redémarrage manuel requis.
@@ -399,7 +405,7 @@ export function SettingsView() {
             )}
           </section>
 
-          {cloudStatus?.desktop && (
+          {desktopMode && (
             <section className="set-card">
               <div className="set-card-head">
                 <h2>Synchronisation cloud</h2>

@@ -80,7 +80,8 @@ export async function initDesktopDb(): Promise<void> {
     await client.syncState.findFirst();
   } catch {
     const apiRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
-    execSync("pnpm exec prisma db push --schema=prisma/schema.sqlite.prisma --skip-generate", {
+    const prismaCli = path.join(apiRoot, "node_modules", "prisma", "build", "index.js");
+    execSync(`node "${prismaCli}" db push --schema=prisma/schema.sqlite.prisma --skip-generate`, {
       cwd: apiRoot,
       env: process.env,
       stdio: "inherit",

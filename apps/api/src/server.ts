@@ -43,12 +43,13 @@ interface AuditPayload {
 const app = Fastify({ logger: true });
 
 await app.register(cors, {
-  origin: [
-    /^http:\/\/localhost:\d+$/,
-    /^http:\/\/127\.0\.0\.1:\d+$/,
-    /^tauri:\/\/localhost$/,
-    /^https:\/\/tauri\.localhost$/,
-  ],
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return cb(null, true);
+    if (/^https?:\/\/[a-z0-9-]+\.localhost$/i.test(origin)) return cb(null, true);
+    if (origin === "tauri://localhost") return cb(null, true);
+    cb(null, false);
+  },
 });
 
 if (isDesktopMode) {

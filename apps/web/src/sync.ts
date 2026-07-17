@@ -1,9 +1,10 @@
 import type { Portfolio } from "./domain";
 import type { RiskAssistRequest, RiskAssistResponse } from "./risk-assist/types";
+import { apiUrl } from "./api-url";
 
 /** Null means the database is empty (first ever run): caller should persist an initial portfolio. */
 export async function fetchPortfolio(): Promise<Portfolio | null> {
-  const res = await fetch("/api/portfolio");
+  const res = await fetch(apiUrl("/api/portfolio"));
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`GET /api/portfolio → ${res.status}`);
   return (await res.json()) as Portfolio;
@@ -19,7 +20,7 @@ export async function savePortfolio(portfolio: Portfolio): Promise<void> {
     surveys: portfolio.surveys ?? [],
     projects: portfolio.projects.map((p) => ({ ...p, timesheets: p.timesheets ?? [] })),
   };
-  const res = await fetch("/api/portfolio", {
+  const res = await fetch(apiUrl("/api/portfolio"), {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(wire),
@@ -43,13 +44,13 @@ export interface AuditEntry {
 }
 
 export async function fetchAuditLog(limit = 300): Promise<AuditEntry[]> {
-  const res = await fetch(`/api/audit?limit=${limit}`);
+  const res = await fetch(apiUrl(`/api/audit?limit=${limit}`));
   if (!res.ok) throw new Error(`GET /api/audit → ${res.status}`);
   return (await res.json()) as AuditEntry[];
 }
 
 export async function clearAuditLog(): Promise<void> {
-  const res = await fetch("/api/audit", { method: "DELETE" });
+  const res = await fetch(apiUrl("/api/audit"), { method: "DELETE" });
   if (!res.ok) throw new Error(`DELETE /api/audit → ${res.status}`);
 }
 
@@ -75,7 +76,7 @@ export interface CloudSyncStatus {
 }
 
 export async function fetchDatabaseConfig(): Promise<DatabaseConfigStatus> {
-  const res = await fetch("/api/config/database");
+  const res = await fetch(apiUrl("/api/config/database"));
   if (!res.ok) throw new Error(`GET /api/config/database → ${res.status}`);
   return (await res.json()) as DatabaseConfigStatus;
 }
@@ -84,7 +85,7 @@ export async function saveDatabaseConfig(config: {
   databaseUrl: string;
   directUrl?: string;
 }): Promise<{ reconnected: boolean }> {
-  const res = await fetch("/api/config/database", {
+  const res = await fetch(apiUrl("/api/config/database"), {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(config),
@@ -97,7 +98,7 @@ export async function saveDatabaseConfig(config: {
 }
 
 export async function fetchCloudSyncStatus(): Promise<CloudSyncStatus> {
-  const res = await fetch("/api/sync/status");
+  const res = await fetch(apiUrl("/api/sync/status"));
   if (!res.ok) throw new Error(`GET /api/sync/status → ${res.status}`);
   return (await res.json()) as CloudSyncStatus;
 }
@@ -107,7 +108,7 @@ export async function saveCloudConfig(config: {
   databaseUrl?: string;
   directUrl?: string;
 }): Promise<void> {
-  const res = await fetch("/api/config/cloud", {
+  const res = await fetch(apiUrl("/api/config/cloud"), {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(config),
@@ -119,12 +120,12 @@ export async function saveCloudConfig(config: {
 }
 
 export async function triggerSyncNow(): Promise<void> {
-  const res = await fetch("/api/sync/now", { method: "POST" });
+  const res = await fetch(apiUrl("/api/sync/now"), { method: "POST" });
   if (!res.ok) throw new Error(`POST /api/sync/now → ${res.status}`);
 }
 
 export async function dismissSyncConflict(): Promise<void> {
-  const res = await fetch("/api/sync/dismiss-conflict", { method: "POST" });
+  const res = await fetch(apiUrl("/api/sync/dismiss-conflict"), { method: "POST" });
   if (!res.ok) throw new Error(`POST /api/sync/dismiss-conflict → ${res.status}`);
 }
 
@@ -140,7 +141,7 @@ export interface AiConfigStatus {
 }
 
 export async function fetchAiConfig(): Promise<AiConfigStatus> {
-  const res = await fetch("/api/config/ai");
+  const res = await fetch(apiUrl("/api/config/ai"));
   if (!res.ok) throw new Error(`GET /api/config/ai → ${res.status}`);
   return (await res.json()) as AiConfigStatus;
 }
@@ -151,7 +152,7 @@ export async function saveAiConfig(config: {
   baseUrl?: string;
   model?: string;
 }): Promise<AiConfigStatus> {
-  const res = await fetch("/api/config/ai", {
+  const res = await fetch(apiUrl("/api/config/ai"), {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(config),
@@ -164,13 +165,13 @@ export async function saveAiConfig(config: {
 }
 
 export async function testAiConfig(): Promise<{ ok: boolean; error?: string }> {
-  const res = await fetch("/api/config/ai/test", { method: "POST" });
+  const res = await fetch(apiUrl("/api/config/ai/test"), { method: "POST" });
   if (!res.ok) throw new Error(`POST /api/config/ai/test → ${res.status}`);
   return (await res.json()) as { ok: boolean; error?: string };
 }
 
 export async function fetchRiskAssist(payload: RiskAssistRequest): Promise<RiskAssistResponse> {
-  const res = await fetch("/api/risk-assist", {
+  const res = await fetch(apiUrl("/api/risk-assist"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -191,7 +192,7 @@ export async function logAudit(entry: {
   detail?: unknown;
 }): Promise<void> {
   try {
-    await fetch("/api/audit", {
+    await fetch(apiUrl("/api/audit"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(entry),

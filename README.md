@@ -21,8 +21,9 @@ Réplique améliorée de MS Project, orientée gestion de portefeuille. Monorepo
 pnpm install
 cp apps/api/.env.example apps/api/.env   # renseigner DATABASE_URL / DIRECT_URL (Neon)
 pnpm --filter @atelier/api db:push       # créer le schéma en base
-pnpm dev:api      # API sur http://localhost:8888
-pnpm dev          # web sur http://localhost:5173 (proxy /api → 8888)
+pnpm dev:stack    # web + API en parallèle (recommandé)
+pnpm dev:api      # API seule sur http://localhost:8888
+pnpm dev          # web seule sur http://localhost:5173 (proxy /api → 8888)
 pnpm test         # 26 tests Vitest (moteur CPM)
 pnpm typecheck    # vérification TypeScript sur tout le monorepo
 pnpm build        # build production (web + compile API)
@@ -43,6 +44,8 @@ pnpm --filter @atelier/api db:push:sqlite   # schéma SQLite de dev (optionnel)
 pnpm dev:desktop                             # Tauri + Vite + API SQLite locale
 pnpm build:desktop                           # installateur .msi / .deb / AppImage
 ```
+
+Arrêtez l'API (`dev:api` / `dev:stack`) avant un build desktop si Prisma doit régénérer les clients ; sinon le build réutilise les clients déjà générés.
 
 Au premier lancement desktop :
 - Base SQLite créée dans le dossier profil utilisateur (`app_data_dir/portfolio.db`)

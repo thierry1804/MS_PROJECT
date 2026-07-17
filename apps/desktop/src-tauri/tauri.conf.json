@@ -7,7 +7,7 @@
     "frontendDist": "../../web/dist",
     "devUrl": "http://localhost:5173",
     "beforeDevCommand": "pnpm --filter @atelier/web dev",
-    "beforeBuildCommand": "pnpm --filter @atelier/web build && pnpm --filter @atelier/api db:generate && pnpm --filter @atelier/api bundle"
+    "beforeBuildCommand": "pnpm --filter @atelier/web build && pnpm --filter @atelier/api package:desktop"
   },
   "app": {
     "windows": [
@@ -18,7 +18,8 @@
         "minWidth": 960,
         "minHeight": 640,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "useHttpsScheme": false
       }
     ],
     "security": {
@@ -36,7 +37,7 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "../../api/dist/server.mjs": "api/server.mjs"
+      "../../api/dist/desktop-api/": "api/"
     }
   }
 }

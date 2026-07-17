@@ -17,20 +17,20 @@ fn monorepo_root() -> PathBuf {
 }
 
 fn spawn_api(app: &tauri::App, db_url: String) -> Result<Child, std::io::Error> {
-  let api_dir = monorepo_root().join("apps/api");
-
   let mut cmd = if cfg!(debug_assertions) {
+    let api_dir = monorepo_root().join("apps/api");
     let mut c = Command::new("pnpm");
     c.args(["exec", "tsx", "src/server.ts"]).current_dir(&api_dir);
     c
   } else {
-    let server = app
+    let api_dir = app
       .path()
       .resource_dir()
       .expect("resource dir")
-      .join("api/server.mjs");
+      .join("api");
+    let tsx = api_dir.join("node_modules/tsx/dist/cli.mjs");
     let mut c = Command::new("node");
-    c.arg(server).current_dir(&api_dir);
+    c.arg(tsx).arg("src/server.ts").current_dir(&api_dir);
     c
   };
 
@@ -38,7 +38,7 @@ fn spawn_api(app: &tauri::App, db_url: String) -> Result<Child, std::io::Error> 
     .env("DATABASE_URL", db_url)
     .env("PORT", "8888")
     .stdout(Stdio::null())
-    .stderr(Stdio::null())
+    .stderr(Stdio::piped())
     .spawn()
 }
 
