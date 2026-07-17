@@ -7,7 +7,7 @@ Réplique améliorée de MS Project, orientée gestion de portefeuille. Monorepo
 | Couche | Technologies |
 |--------|--------------|
 | Web | React 19, Vite 6, React Router 7 (hash), Zustand 5, CSS modules par vue |
-| API | Fastify 5, CORS localhost, port 8787 |
+| API | Fastify 5, CORS localhost, port 8888 |
 | Desktop | Tauri 2, SQLite local, sync Neon optionnelle |
 | Données | Prisma 6, PostgreSQL (Neon) ou SQLite (desktop) |
 | Moteur | `@atelier/scheduling-engine`. CPM, calendriers, EVM, nivellement |
@@ -21,8 +21,8 @@ Réplique améliorée de MS Project, orientée gestion de portefeuille. Monorepo
 pnpm install
 cp apps/api/.env.example apps/api/.env   # renseigner DATABASE_URL / DIRECT_URL (Neon)
 pnpm --filter @atelier/api db:push       # créer le schéma en base
-pnpm dev:api      # API sur http://localhost:8787
-pnpm dev          # web sur http://localhost:5173 (proxy /api → 8787)
+pnpm dev:api      # API sur http://localhost:8888
+pnpm dev          # web sur http://localhost:5173 (proxy /api → 8888)
 pnpm test         # 26 tests Vitest (moteur CPM)
 pnpm typecheck    # vérification TypeScript sur tout le monorepo
 pnpm build        # build production (web + compile API)

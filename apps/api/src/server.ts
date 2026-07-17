@@ -210,8 +210,9 @@ app.post("/api/risk-assist", async (req, reply) => {
   return runRiskAssist(body);
 });
 
-const port = Number(process.env.PORT ?? 8787);
-app.listen({ port, host: "0.0.0.0" }).catch((err) => {
+// 8787 is inside Windows Hyper-V/WSL excluded range 8748–8847 (EACCES).
+const port = Number(process.env.PORT ?? 8888);
+app.listen({ port, host: "127.0.0.1" }).catch((err) => {
   app.log.error(err);
   process.exit(1);
 });

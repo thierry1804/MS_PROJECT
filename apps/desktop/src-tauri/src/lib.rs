@@ -36,7 +36,7 @@ fn spawn_api(app: &tauri::App, db_url: String) -> Result<Child, std::io::Error> 
 
   cmd.env("DESKTOP_MODE", "1")
     .env("DATABASE_URL", db_url)
-    .env("PORT", "8787")
+    .env("PORT", "8888")
     .stdout(Stdio::null())
     .stderr(Stdio::null())
     .spawn()
