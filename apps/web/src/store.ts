@@ -34,7 +34,16 @@ import {
   type ProgressMode,
 } from "./domain";
 import { applyProgressMode } from "./progress";
-import { AccessRevokedError, fetchPortfolio, fetchCloudSyncStatus, logAudit, savePortfolio, triggerSyncNow } from "./sync";
+import {
+  AccessRevokedError,
+  fetchPortfolio,
+  fetchCloudSyncStatus,
+  logAudit,
+  savePortfolio,
+  subscribePortfolioEvents,
+  triggerSyncNow,
+} from "./sync";
+import { isDesktopShell } from "./api-url";
 
 const MAX_BASELINE_VERSIONS = 10;
 
@@ -1175,16 +1184,21 @@ useStore.subscribe((state, prev) => {
   scheduleSave(state.portfolio);
 });
 
+/** Applies a freshly-fetched remote portfolio, re-running the same cadrage→en-cours fixups as startup hydration. */
+function applyRemotePortfolio(remote: Portfolio): void {
+  const projects = remote.projects.map(maybePromoteToEnCours);
+  const changed = projects.some((p, i) => p !== remote.projects[i]);
+  const portfolio = changed ? { ...remote, projects } : remote;
+  useStore.setState({ portfolio, syncStatus: "saved" });
+  if (changed) scheduleSave(portfolio);
+}
+
 (async () => {
   try {
     const remote = await fetchPortfolio();
     if (remote) {
-      const projects = remote.projects.map(maybePromoteToEnCours);
-      const changed = projects.some((p, i) => p !== remote.projects[i]);
-      const portfolio = changed ? { ...remote, projects } : remote;
-      useStore.setState({ portfolio, syncStatus: "saved" });
+      applyRemotePortfolio(remote);
       hydrated = true;
-      if (changed) scheduleSave(portfolio);
     } else {
       await persistNow(useStore.getState().portfolio);
       hydrated = true;
@@ -1195,6 +1209,24 @@ useStore.subscribe((state, prev) => {
     hydrated = true;
   }
 })();
+
+/**
+ * Real-time: when another session persists a change, refetch — but only when
+ * it's safe to replace local state outright. Skipped while a save is pending
+ * or in flight (an active edit must never be clobbered by someone else's
+ * push), and ignored if we're already at that revision (e.g. our own save
+ * echoing back, or a duplicate ping).
+ */
+if (!isDesktopShell()) {
+  subscribePortfolioEvents((revision) => {
+    const { portfolio, syncStatus } = useStore.getState();
+    if (!hydrated || saveTimer || syncStatus === "saving") return;
+    if ((portfolio.revision ?? 0) >= revision) return;
+    void fetchPortfolio().then((remote) => {
+      if (remote) applyRemotePortfolio(remote);
+    });
+  });
+}
 
 window.addEventListener("online", () => {
   void triggerSyncNow()

@@ -43,6 +43,7 @@ import {
   markNotificationRead,
   snapshotRaidOwners,
 } from "./notifications.js";
+import { addPortfolioEventClient, broadcastPortfolioChanged, removePortfolioEventClient } from "./events.js";
 
 function isDatabaseUnreachable(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
@@ -171,6 +172,19 @@ app.get("/api/auth/me", async (req, reply) => {
   return { email: user.email, role: user.role };
 });
 
+app.get("/api/portfolio/events", async (req, reply) => {
+  if (isDesktopMode) return reply.code(404).send();
+  reply.hijack();
+  reply.raw.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+  });
+  reply.raw.write(": connected\n\n");
+  addPortfolioEventClient(reply);
+  req.raw.on("close", () => removePortfolioEventClient(reply));
+});
+
 app.get("/api/portfolio", async (req, reply) => {
   const accessScope = isDesktopMode ? null : await getAccessScope(prisma, req.userId);
   const portfolio = await getPortfolio(prisma, accessScope);
@@ -191,6 +205,7 @@ app.put("/api/portfolio", async (req, reply) => {
   }
   void afterLocalSave();
   void detectRaidAssignmentsAndNotify(prisma, accessScope, previousOwners, payload);
+  if (!isDesktopMode) broadcastPortfolioChanged(result);
   return { ok: true };
 });
 

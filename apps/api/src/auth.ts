@@ -3,9 +3,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Session secret persisted next to the DB config file (apps/api/data/, same
-// ephemeral-storage caveat as runtime-config.json: lost on image rebuild,
-// which just forces a re-login — acceptable for a single-tenant tool).
+// Prefer AUTH_SECRET from the environment (apps/api/.env — persists across image
+// rebuilds). The data/ dir is NOT a docker volume: a secret written only there is
+// regenerated on every rebuild, silently invalidating every existing session cookie
+// (signatures no longer verify) and forcing a full re-login — this bit a real user,
+// so .env is now the primary source and the file is only a same-boot fallback.
 const DATA_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "data");
 const SECRET_PATH = path.join(DATA_DIR, "auth-secret.txt");
 
@@ -29,8 +31,8 @@ function loadOrCreateSecret(): string {
 const SECRET = loadOrCreateSecret();
 
 export const SESSION_COOKIE_NAME = "atelier_session";
-const SESSION_DAYS = 30;
-export const SESSION_MAX_AGE_SECONDS = SESSION_DAYS * 24 * 60 * 60;
+const SESSION_HOURS = 8;
+export const SESSION_MAX_AGE_SECONDS = SESSION_HOURS * 60 * 60;
 
 export function hashPassword(password: string): string {
   const salt = crypto.randomBytes(16).toString("hex");

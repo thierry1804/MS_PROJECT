@@ -298,6 +298,10 @@ export interface Portfolio {
   governanceEvents?: GovernanceEvent[];
   /** Réponses au baromètre de satisfaction interne — KPI NPS. */
   surveys?: SurveyResponse[];
+  /** Monotonic counter set by the API on save; used to detect real-time pushes we're already at. */
+  revision?: number;
+  /** ISO datetime of last portfolio mutation, set by the API. */
+  updatedAt?: string;
 }
 
 /** Fields captured when a new project is created from the intake form. */

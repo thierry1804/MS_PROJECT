@@ -43,6 +43,25 @@ export async function savePortfolio(portfolio: Portfolio): Promise<void> {
   }
 }
 
+/**
+ * Server-Sent Events push: "the portfolio changed on the server, go refetch" —
+ * carries no data itself, just a revision marker (see apps/api/src/events.ts).
+ * Reconnects on its own (native EventSource behavior) if the tunnel/connection
+ * drops; callers don't need to handle that.
+ */
+export function subscribePortfolioEvents(onChanged: (revision: number) => void): () => void {
+  const source = new EventSource(apiUrl("/api/portfolio/events"));
+  source.onmessage = (ev) => {
+    try {
+      const data = JSON.parse(ev.data) as { revision?: number };
+      if (typeof data.revision === "number") onChanged(data.revision);
+    } catch {
+      // ignore malformed/comment-only events
+    }
+  };
+  return () => source.close();
+}
+
 export interface AuditEntry {
   id: string;
   /** ISO datetime. */
