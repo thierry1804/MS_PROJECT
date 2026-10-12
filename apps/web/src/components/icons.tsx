@@ -268,6 +268,114 @@ export function SettingsNavIcon() {
   );
 }
 
+export function UsersNavIcon() {
+  return (
+    <svg {...base}>
+      <circle cx="6" cy="6" r="2.2" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M2 13c0-2.2 1.8-3.6 4-3.6s4 1.4 4 3.6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <circle cx="11.5" cy="5.5" r="1.6" stroke="currentColor" strokeWidth="1.1" />
+      <path d="M10.3 9.6c1.6.2 2.7 1.3 2.7 3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function BellIcon() {
+  return (
+    <svg {...base}>
+      <path
+        d="M8 2.5c-1.8 0-3 1.4-3 3.2v1.6c0 .8-.3 1.5-.9 2.2l-.5.6h8.8l-.5-.6c-.6-.7-.9-1.4-.9-2.2V5.7c0-1.8-1.2-3.2-3-3.2Z"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+      <path d="M6.3 12.2c.3.8 1 1.3 1.7 1.3s1.4-.5 1.7-1.3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function KeyIcon() {
+  return (
+    <svg {...base}>
+      <circle cx="5.2" cy="10.8" r="2.4" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M7 9 12.5 3.5M10.5 5.5l1.6 1.6M12.3 3.7l1.6 1.6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function EyeIcon() {
+  return (
+    <svg {...base}>
+      <path
+        d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8Z"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+      <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
+export function EyeOffIcon() {
+  return (
+    <svg {...base}>
+      <path
+        d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8Z"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+      <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M2.5 13 13.5 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function DiceIcon() {
+  return (
+    <svg {...base}>
+      <rect x="2.5" y="2.5" width="11" height="11" rx="2.5" stroke="currentColor" strokeWidth="1.2" />
+      <circle cx="5.5" cy="5.5" r="0.9" fill="currentColor" />
+      <circle cx="10.5" cy="5.5" r="0.9" fill="currentColor" />
+      <circle cx="8" cy="8" r="0.9" fill="currentColor" />
+      <circle cx="5.5" cy="10.5" r="0.9" fill="currentColor" />
+      <circle cx="10.5" cy="10.5" r="0.9" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function PencilIcon() {
+  return (
+    <svg {...base}>
+      <path
+        d="M10.5 2.5 13.5 5.5 5 14 2 14.5 2.5 11.5 10.5 2.5Z"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+      <path d="M9 4 12 7" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function UndoIcon() {
+  return (
+    <svg {...base}>
+      <path d="M4 7h6a3.5 3.5 0 1 1 0 7H7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M6.5 4.3 4 7l2.5 2.7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function RedoIcon() {
+  return (
+    <svg {...base}>
+      <path d="M12 7H6a3.5 3.5 0 1 0 0 7h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M9.5 4.3 12 7l-2.5 2.7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function ChevronLeftIcon() {
   return (
     <svg {...base}>

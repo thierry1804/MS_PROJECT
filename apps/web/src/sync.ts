@@ -11,6 +11,16 @@ export async function fetchPortfolio(): Promise<Portfolio | null> {
   return (await res.json()) as Portfolio;
 }
 
+/**
+ * Thrown when the server 403s a save because the in-memory portfolio still
+ * holds a project the caller's access was revoked for mid-session (admin
+ * changed their grants while they were editing). Distinct from a plain
+ * network/server error so the caller can resync instead of just retrying —
+ * retrying would 403 forever, since the stale project never leaves local
+ * state on its own.
+ */
+export class AccessRevokedError extends Error {}
+
 /** Full replace on the server. Fills in the optional arrays the wire format requires. */
 export async function savePortfolio(portfolio: Portfolio): Promise<void> {
   const wire: Portfolio = {
@@ -28,6 +38,7 @@ export async function savePortfolio(portfolio: Portfolio): Promise<void> {
   });
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { error?: string } | null;
+    if (res.status === 403) throw new AccessRevokedError(body?.error ?? "Accès retiré.");
     throw new Error(body?.error ?? `PUT /api/portfolio → ${res.status}`);
   }
 }

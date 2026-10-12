@@ -125,11 +125,6 @@
   grid-column: span 2;
 }
 
-.set-field-action {
-  justify-content: flex-end;
-  align-items: flex-end;
-}
-
 .set-field > span {
   font-size: var(--fs-sm);
   color: var(--ink-1);
@@ -260,14 +255,14 @@
   font-size: var(--fs-xs);
   color: var(--ink-2);
   background: var(--paper-1);
-  border-left: 3px solid var(--paper-2);
-  border-radius: 0 4px 4px 0;
+  border: 1px solid var(--paper-2);
+  border-radius: 4px;
   line-height: 1.45;
 }
 
 .set-callout.warn {
   color: var(--critical);
-  border-left-color: var(--critical);
+  border-color: var(--critical-soft);
   background: var(--critical-soft);
 }
 
@@ -348,6 +343,9 @@
 .set-del {
   width: 22px;
   height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 4px;
   color: var(--ink-3);
   font-size: 11px;
@@ -374,10 +372,6 @@
 
   .set-fields-grid-3 {
     grid-template-columns: 1fr 1fr;
-  }
-
-  .set-field-action {
-    grid-column: 1 / -1;
   }
 }
 

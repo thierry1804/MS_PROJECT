@@ -34,7 +34,7 @@ import {
   type ProgressMode,
 } from "./domain";
 import { applyProgressMode } from "./progress";
-import { fetchPortfolio, fetchCloudSyncStatus, logAudit, savePortfolio, triggerSyncNow } from "./sync";
+import { AccessRevokedError, fetchPortfolio, fetchCloudSyncStatus, logAudit, savePortfolio, triggerSyncNow } from "./sync";
 
 const MAX_BASELINE_VERSIONS = 10;
 
@@ -93,7 +93,8 @@ export type SyncStatus =
   | "offline"
   | "syncing"
   | "cloud_pending"
-  | "conflict_resolved";
+  | "conflict_resolved"
+  | "access_revoked";
 
 interface AppState {
   portfolio: Portfolio;
@@ -178,6 +179,11 @@ interface AppState {
   importProjectTasks: (projectId: string, tasks: Task[], dependencies?: Dependency[]) => void;
   /** Retry a failed autosave with the current in-memory portfolio. */
   retrySync: () => void;
+  /** Session-only (not persisted) history, capped at UNDO_LIMIT entries each way. */
+  canUndo: boolean;
+  canRedo: boolean;
+  undo: () => void;
+  redo: () => void;
 }
 
 function slugId(code: string): string {
@@ -196,6 +202,8 @@ function maybePromoteToEnCours(project: Project): Project {
 export const useStore = create<AppState>()((set, get) => ({
       portfolio: EMPTY_PORTFOLIO,
       syncStatus: "loading",
+      canUndo: false,
+      canRedo: false,
       selectedTaskId: null,
       collapsed: {},
 
@@ -1076,6 +1084,26 @@ export const useStore = create<AppState>()((set, get) => ({
   retrySync: () => {
     void persistNow(get().portfolio);
   },
+
+  undo: () => {
+    if (undoStack.length === 0) return;
+    const prev = undoStack.pop()!;
+    redoStack.push(get().portfolio);
+    applyingHistory = true;
+    set({ portfolio: prev });
+    applyingHistory = false;
+    useStore.setState({ canUndo: undoStack.length > 0, canRedo: redoStack.length > 0 });
+  },
+
+  redo: () => {
+    if (redoStack.length === 0) return;
+    const next = redoStack.pop()!;
+    undoStack.push(get().portfolio);
+    applyingHistory = true;
+    set({ portfolio: next });
+    applyingHistory = false;
+    useStore.setState({ canUndo: undoStack.length > 0, canRedo: redoStack.length > 0 });
+  },
 }));
 
 /* ------------------------------------------------------------------ */
@@ -1085,13 +1113,32 @@ export const useStore = create<AppState>()((set, get) => ({
 let hydrated = false;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
+/**
+ * Session-only undo/redo (lost on reload, by design — this is a "ctrl+z" safety
+ * net for edits within a session, not a persisted version history). Kept as
+ * plain module arrays rather than in zustand state: only the booleans need to
+ * be reactive, not the (potentially large) snapshot payloads themselves.
+ */
+const UNDO_LIMIT = 50;
+let undoStack: Portfolio[] = [];
+let redoStack: Portfolio[] = [];
+let applyingHistory = false;
+
 async function persistNow(portfolio: Portfolio) {
   useStore.setState({ syncStatus: "saving" });
   try {
     await savePortfolio(portfolio);
     await refreshCloudSyncStatus();
     useStore.setState({ syncStatus: "saved" });
-  } catch {
+  } catch (err) {
+    if (err instanceof AccessRevokedError) {
+      // Retrying would just 403 again — the stale project never leaves local state on
+      // its own. Reload to re-fetch a correctly-scoped portfolio from the server,
+      // same recovery as login/logout already use elsewhere in this app.
+      useStore.setState({ syncStatus: "access_revoked" });
+      setTimeout(() => window.location.reload(), 2500);
+      return;
+    }
     useStore.setState({ syncStatus: "error" });
   }
 }
@@ -1119,6 +1166,12 @@ function scheduleSave(portfolio: Portfolio) {
 
 useStore.subscribe((state, prev) => {
   if (!hydrated || state.portfolio === prev.portfolio) return;
+  if (!applyingHistory) {
+    undoStack.push(prev.portfolio);
+    if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+    redoStack = [];
+    useStore.setState({ canUndo: true, canRedo: false });
+  }
   scheduleSave(state.portfolio);
 });
 

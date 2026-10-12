@@ -1,0 +1,18 @@
+# Applique infra/scripts/firewall.sh au démarrage (après Docker, qui crée la chaîne DOCKER-USER)
+# et à chaque redémarrage du démon Docker.
+#
+# Installation :
+#   sudo cp infra/systemd/atelier-firewall.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now atelier-firewall.service
+[Unit]
+Description=Pare-feu atelier (ferme le port web exposé hors tunnel Cloudflare)
+After=docker.service network-online.target
+Wants=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/home/debian/MS_PROJECT/infra/scripts/firewall.sh
+
+[Install]
+WantedBy=multi-user.target docker.service

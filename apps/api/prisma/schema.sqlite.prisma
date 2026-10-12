@@ -257,6 +257,15 @@ model CustomFieldDef {
   @@map("custom_field_def")
 }
 
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("user")
+}
+
 model CopilotMemory {
   portfolioId     String   @id @default("default") @map("portfolio_id")
   preferences     Json     @default("{}")

@@ -614,7 +614,7 @@ function ProjectViewBody({ project, portfolio }: { project: Project; portfolio: 
             <span style={{ width: 62 }} className="h num">
               Fin
             </span>
-            <span style={{ width: 44 }} className="h num">
+            <span style={{ width: 56 }} className="h num">
               %
             </span>
             {showVariance && (

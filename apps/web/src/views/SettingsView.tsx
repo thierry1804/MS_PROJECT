@@ -735,20 +735,14 @@ export function SettingsView() {
                 />
               </label>
             ) : (
-              <div className="set-field set-field-action">
-                <button className="set-save" onClick={submitField} disabled={!name.trim()}>
-                  Ajouter
-                </button>
-              </div>
+              <div className="set-field set-field-span" aria-hidden="true" />
             )}
           </div>
-          {type === "select" && (
-            <footer className="set-card-foot">
-              <button className="set-save" onClick={submitField} disabled={!name.trim()}>
-                Ajouter
-              </button>
-            </footer>
-          )}
+          <footer className="set-card-foot">
+            <button className="set-save" onClick={submitField} disabled={!name.trim()}>
+              Ajouter
+            </button>
+          </footer>
           </section>
         </div>
       </div>

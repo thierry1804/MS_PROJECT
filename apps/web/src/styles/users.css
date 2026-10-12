@@ -1,0 +1,198 @@
+.users-table td {
+  vertical-align: middle;
+}
+
+.users-table td.c {
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+}
+
+.users-error {
+  font-size: var(--fs-sm);
+  color: var(--critical);
+  margin: 0 0 10px;
+}
+
+.users-denied {
+  padding: 20px 32px;
+}
+
+.users-role-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+
+.users-role-badge.admin {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.users-role-badge.member {
+  background: var(--paper-2);
+  color: var(--ink-1);
+}
+
+.users-empty-hint {
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+  font-style: italic;
+  margin: 0 0 8px;
+}
+
+.users-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.users-section-head h2 {
+  margin: 0;
+}
+
+/* ---------- Create-user drawer ---------- */
+.drawer-backdrop {
+  justify-content: flex-end;
+  align-items: stretch;
+  padding: 0;
+}
+
+.drawer {
+  width: 420px;
+  max-width: 100%;
+  height: 100%;
+  background: var(--paper-0);
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  animation: drawer-slide-in 180ms var(--ease-out);
+}
+
+@keyframes drawer-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.drawer-password-row {
+  display: flex;
+  gap: 6px;
+}
+
+.drawer-password-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.drawer-icon-btn {
+  width: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--paper-2);
+  border-radius: 6px;
+  background: var(--paper-0);
+  color: var(--ink-2);
+}
+
+.drawer-icon-btn:hover {
+  background: var(--paper-1);
+  color: var(--ink-0);
+}
+
+.drawer-project-list {
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.drawer-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.drawer-hint {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  margin: -6px 0 0;
+}
+
+.drawer-optional {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.drawer .modal-field input:disabled {
+  background: var(--paper-1);
+  color: var(--ink-2);
+  cursor: not-allowed;
+}
+
+.users-bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  background: var(--accent-soft);
+  border: 1px solid var(--paper-2);
+  border-radius: 6px;
+  font-size: var(--fs-sm);
+  color: var(--ink-1);
+}
+
+.users-bulk-bar select {
+  font-size: var(--fs-sm);
+  padding: 5px 8px;
+  border: 1px solid var(--paper-2);
+  border-radius: 6px;
+  background: var(--paper-0);
+}
+
+.users-bulk-clear {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+}
+
+/* ---------- Presence / audit columns ---------- */
+.users-presence-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-3);
+  margin-right: 6px;
+}
+
+.users-presence-dot.online {
+  background: var(--ok);
+}
+
+.users-presence-text {
+  font-size: var(--fs-sm);
+  color: var(--ink-1);
+}
+
+.users-ip {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  font-feature-settings: "tnum";
+  margin-top: 2px;
+}

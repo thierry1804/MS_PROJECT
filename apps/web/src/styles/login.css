@@ -1,0 +1,133 @@
+.login-screen {
+  display: flex;
+  min-height: 100vh;
+  background: var(--paper-0);
+  font-family: var(--font);
+}
+
+.login-illustration-pane {
+  flex: 1.15;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 48px;
+  background: color-mix(in oklch, var(--accent) 18%, var(--paper-1));
+  border-right: 1px solid var(--paper-2);
+}
+
+.login-illustration {
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+}
+
+.login-tagline {
+  max-width: 320px;
+  font-size: var(--fs-lg);
+  font-weight: 500;
+  color: var(--ink-1);
+  text-align: center;
+  letter-spacing: -0.01em;
+}
+
+.login-form-pane {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+@media (max-width: 860px) {
+  .login-illustration-pane {
+    display: none;
+  }
+}
+
+.login-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 320px;
+  padding: 32px;
+  background: var(--paper-0);
+  border: 1px solid var(--paper-2);
+  border-radius: var(--radius);
+  box-shadow: 0 2px 16px oklch(0.2 0.02 80 / 0.08);
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  color: var(--ink-0);
+  margin-bottom: 8px;
+}
+
+.login-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--paper-0);
+  font-weight: 700;
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+}
+
+.login-field input {
+  font-family: var(--font);
+  font-size: var(--fs-md);
+  padding: 8px 10px;
+  border: 1px solid var(--paper-2);
+  border-radius: var(--radius);
+  background: var(--paper-0);
+  color: var(--ink-0);
+}
+
+.login-field input:focus {
+  outline: 2px solid var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.login-error {
+  font-size: var(--fs-sm);
+  color: var(--critical);
+  background: var(--critical-soft);
+  padding: 8px 10px;
+  border-radius: var(--radius);
+}
+
+.login-submit {
+  font-family: var(--font);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  padding: 10px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--paper-0);
+  cursor: pointer;
+}
+
+.login-submit:hover {
+  background: var(--accent-hover);
+}
+
+.login-submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

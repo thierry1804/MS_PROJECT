@@ -19,7 +19,9 @@
     "db:push:pg": "prisma db push",
     "db:push:sqlite": "prisma db push --schema=prisma/schema.sqlite.prisma",
     "db:seed": "tsx prisma/seed.ts",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "user:create": "tsx scripts/create-user.mts",
+    "user:set-role": "tsx scripts/set-role.mts"
   },
   "dependencies": {
     "@atelier/scheduling-engine": "workspace:*",

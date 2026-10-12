@@ -68,7 +68,10 @@ export function AuditLogView() {
 
   const q = query.trim().toLowerCase();
   const filtered = useMemo(
-    () => (entries ?? []).filter((e) => !q || e.summary.toLowerCase().includes(q)),
+    () =>
+      (entries ?? []).filter(
+        (e) => !q || e.summary.toLowerCase().includes(q) || e.actor.toLowerCase().includes(q),
+      ),
     [entries, q],
   );
 
@@ -110,7 +113,7 @@ export function AuditLogView() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Filtrer le journal…"
+          placeholder="Filtrer par résumé ou auteur…"
           aria-label="Filtrer le journal"
         />
 
@@ -118,12 +121,22 @@ export function AuditLogView() {
         {!error && entries === null && <p className="audit-empty">Chargement…</p>}
         {entries !== null && filtered.length === 0 && !error && <p className="audit-empty">Aucune entrée.</p>}
 
+        {entries !== null && filtered.length > 0 && !error && (
+          <div className="audit-row audit-head" aria-hidden="true">
+            <span className="audit-date">Date</span>
+            <span className="audit-entity">Type</span>
+            <span className="audit-summary grow">Résumé</span>
+            <span className="audit-actor">Auteur</span>
+          </div>
+        )}
+
         <ul className="audit-list">
           {paginated.map((e) => (
             <li key={e.id} className="audit-row">
               <span className="audit-date tnum">{fmtAudit(e.at)}</span>
-              <span className={`audit-entity audit-${e.entityType}`}>{ENTITY_LABELS[e.entityType] ?? e.entityType}</span>
+              <span className="audit-entity-badge">{ENTITY_LABELS[e.entityType] ?? e.entityType}</span>
               <span className="audit-summary grow">{e.summary}</span>
+              <span className="audit-actor">{e.actor}</span>
             </li>
           ))}
         </ul>

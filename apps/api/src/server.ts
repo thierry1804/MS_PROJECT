@@ -24,6 +24,25 @@ import {
   resetCopilotMemory,
 } from "./copilot-memory.js";
 import { runCopilotChat, runCopilotChatHeuristic, type CopilotChatRequestBody } from "./copilot.js";
+import {
+  clearSessionCookie,
+  createSessionToken,
+  parseCookies,
+  serializeSessionCookie,
+  SESSION_COOKIE_NAME,
+  verifyPassword,
+  verifySessionToken,
+} from "./auth.js";
+import { getAccessScope, getClientIp, requireAdmin } from "./access.js";
+import { createUser, deleteUser, listUsers, updateUser, UserError } from "./users.js";
+import { listAccessForUser, setAccessForUser } from "./project-access.js";
+import {
+  detectRaidAssignmentsAndNotify,
+  listNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  snapshotRaidOwners,
+} from "./notifications.js";
 
 function isDatabaseUnreachable(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
@@ -47,7 +66,17 @@ interface AuditPayload {
   actor?: string;
 }
 
+declare module "fastify" {
+  interface FastifyRequest {
+    userId?: string;
+  }
+}
+
+const isProd = process.env.NODE_ENV === "production";
+const PUBLIC_API_PATHS = new Set(["/api/health", "/api/auth/login", "/api/auth/logout"]);
+
 const app = Fastify({ logger: true });
+app.decorateRequest("userId", undefined);
 
 await app.register(cors, {
   origin: (origin, cb) => {
@@ -65,6 +94,24 @@ if (isDesktopMode) {
   void syncNow();
 }
 
+// Desktop mode is a local single-user app (no network exposure) — no session gate needed.
+// Web mode is reachable over the internet, so every /api/* route requires a valid session
+// except health and the login/logout endpoints themselves.
+if (!isDesktopMode) {
+  app.addHook("onRequest", async (req, reply) => {
+    if (!req.url.startsWith("/api/")) return;
+    const pathname = req.url.split("?")[0];
+    if (PUBLIC_API_PATHS.has(pathname)) return;
+    const cookies = parseCookies(req.headers.cookie);
+    const userId = verifySessionToken(cookies[SESSION_COOKIE_NAME]);
+    if (!userId) {
+      reply.code(401).send({ error: "Authentification requise." });
+      return;
+    }
+    req.userId = userId;
+  });
+}
+
 app.setErrorHandler((err, _req, reply) => {
   if (isDatabaseUnreachable(err)) {
     app.log.error(err);
@@ -79,8 +126,54 @@ app.get("/api/health", async () => ({
   desktop: isDesktopMode,
 }));
 
-app.get("/api/portfolio", async (_req, reply) => {
-  const portfolio = await getPortfolio(prisma);
+app.post("/api/auth/login", async (req, reply) => {
+  const body = req.body as { email?: string; password?: string };
+  const email = body?.email?.trim().toLowerCase();
+  const password = body?.password;
+  if (!email || !password) {
+    return reply.code(400).send({ error: "Email et mot de passe requis." });
+  }
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user || !verifyPassword(password, user.passwordHash)) {
+    return reply.code(401).send({ error: "Identifiants invalides." });
+  }
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { lastLoginAt: new Date(), lastLoginIp: getClientIp(req) },
+  });
+  reply.header("set-cookie", serializeSessionCookie(createSessionToken(user.id), isProd));
+  return { ok: true, email: user.email, role: user.role };
+});
+
+app.post("/api/auth/heartbeat", async (req) => {
+  if (isDesktopMode || !req.userId) return { ok: true };
+  const body = req.body as { path?: string };
+  await prisma.user.update({
+    where: { id: req.userId },
+    data: {
+      lastSeenAt: new Date(),
+      lastSeenIp: getClientIp(req),
+      lastSeenPath: body?.path?.slice(0, 200) || null,
+    },
+  });
+  return { ok: true };
+});
+
+app.post("/api/auth/logout", async (_req, reply) => {
+  reply.header("set-cookie", clearSessionCookie(isProd));
+  return { ok: true };
+});
+
+app.get("/api/auth/me", async (req, reply) => {
+  if (isDesktopMode) return { email: null, desktop: true, role: "admin" };
+  const user = await prisma.user.findUnique({ where: { id: req.userId } });
+  if (!user) return reply.code(401).send({ error: "Non authentifié." });
+  return { email: user.email, role: user.role };
+});
+
+app.get("/api/portfolio", async (req, reply) => {
+  const accessScope = isDesktopMode ? null : await getAccessScope(prisma, req.userId);
+  const portfolio = await getPortfolio(prisma, accessScope);
   if (!portfolio) return reply.code(404).send({ error: "Aucun portefeuille en base." });
   return portfolio;
 });
@@ -90,21 +183,40 @@ app.put("/api/portfolio", async (req, reply) => {
   if (!payload || typeof payload !== "object" || !Array.isArray(payload.projects)) {
     return reply.code(400).send({ error: "Corps de requête invalide." });
   }
-  await replacePortfolio(prisma, payload);
+  const accessScope = isDesktopMode ? null : await getAccessScope(prisma, req.userId);
+  const previousOwners = await snapshotRaidOwners(prisma, accessScope);
+  const result = await replacePortfolio(prisma, payload, {}, accessScope);
+  if ("error" in result) {
+    return reply.code(403).send({ error: "Ce portefeuille contient un projet auquel vous n'avez pas accès." });
+  }
   void afterLocalSave();
+  void detectRaidAssignmentsAndNotify(prisma, accessScope, previousOwners, payload);
   return { ok: true };
 });
 
-app.get("/api/audit", async (req) => {
+app.get("/api/audit", async (req, reply) => {
+  if (!(await requireAdmin(prisma, req, reply))) return;
   const { limit } = req.query as { limit?: string };
   const take = Math.min(Number(limit) || 300, 1000);
   return prisma.auditEntry.findMany({ orderBy: { at: "desc" }, take });
 });
 
 app.post("/api/audit", async (req, reply) => {
+  // Intentionally not admin-gated: any authenticated user's actions (including members)
+  // still get logged, so an admin can audit them later — only reading/clearing the log is restricted.
   const body = req.body as Partial<AuditPayload>;
   if (!body?.entityType || !body?.entityId || !body?.action || !body?.summary) {
     return reply.code(400).send({ error: "Corps de requête invalide." });
+  }
+  // The client-supplied `actor` is only ever "copilot" today (set by the AI copilot
+  // flow) or omitted — never trustworthy as the real human identity on its own. In
+  // web mode, resolve the actual logged-in user from the session and use that,
+  // keeping the "copilot" tag as a suffix so AI-assisted edits stay distinguishable.
+  let actor = body.actor || undefined;
+  if (!isDesktopMode && req.userId) {
+    const user = await prisma.user.findUnique({ where: { id: req.userId }, select: { name: true, email: true } });
+    const who = user?.name || user?.email;
+    if (who) actor = body.actor === "copilot" ? `${who} (copilot)` : who;
   }
   const entry = await prisma.auditEntry.create({
     data: {
@@ -113,14 +225,101 @@ app.post("/api/audit", async (req, reply) => {
       action: body.action,
       summary: body.summary,
       detail: body.detail === undefined ? undefined : (body.detail as object),
-      actor: body.actor || undefined,
+      actor,
     },
   });
   return entry;
 });
 
-app.delete("/api/audit", async () => {
+app.delete("/api/audit", async (req, reply) => {
+  if (!(await requireAdmin(prisma, req, reply))) return;
   const { count } = await prisma.auditEntry.deleteMany();
+  return { ok: true, count };
+});
+
+// User/role/project-access tables only exist in the Postgres schema (schema.prisma) —
+// desktop mode runs on SQLite (schema.sqlite.prisma) and has no concept of multiple
+// accounts, so these routes 404 there instead of crashing on an unknown-field Prisma error.
+const DESKTOP_404 = { error: "Non disponible en mode desktop." };
+
+app.get("/api/users", async (req, reply) => {
+  if (isDesktopMode) return reply.code(404).send(DESKTOP_404);
+  if (!(await requireAdmin(prisma, req, reply))) return;
+  return listUsers(prisma);
+});
+
+app.post("/api/users", async (req, reply) => {
+  if (isDesktopMode) return reply.code(404).send(DESKTOP_404);
+  if (!(await requireAdmin(prisma, req, reply))) return;
+  const body = req.body as { email?: string; password?: string; name?: string; role?: "admin" | "member" };
+  if (!body?.email || !body?.password) return reply.code(400).send({ error: "Email et mot de passe requis." });
+  try {
+    return await createUser(prisma, body as { email: string; password: string; name?: string; role?: "admin" | "member" });
+  } catch (e) {
+    return reply.code(400).send({ error: e instanceof UserError ? e.message : "Création impossible." });
+  }
+});
+
+app.patch("/api/users/:id", async (req, reply) => {
+  if (isDesktopMode) return reply.code(404).send(DESKTOP_404);
+  if (!(await requireAdmin(prisma, req, reply))) return;
+  const { id } = req.params as { id: string };
+  const body = req.body as { name?: string; role?: "admin" | "member"; password?: string };
+  try {
+    return await updateUser(prisma, id, body);
+  } catch (e) {
+    return reply.code(400).send({ error: e instanceof UserError ? e.message : "Modification impossible." });
+  }
+});
+
+app.delete("/api/users/:id", async (req, reply) => {
+  if (isDesktopMode) return reply.code(404).send(DESKTOP_404);
+  const actingUserId = await requireAdmin(prisma, req, reply);
+  if (!actingUserId) return;
+  const { id } = req.params as { id: string };
+  try {
+    await deleteUser(prisma, id, actingUserId);
+    return { ok: true };
+  } catch (e) {
+    return reply.code(400).send({ error: e instanceof UserError ? e.message : "Suppression impossible." });
+  }
+});
+
+app.get("/api/users/:id/project-access", async (req, reply) => {
+  if (isDesktopMode) return reply.code(404).send(DESKTOP_404);
+  if (!(await requireAdmin(prisma, req, reply))) return;
+  const { id } = req.params as { id: string };
+  return { projectIds: await listAccessForUser(prisma, id) };
+});
+
+app.put("/api/users/:id/project-access", async (req, reply) => {
+  if (isDesktopMode) return reply.code(404).send(DESKTOP_404);
+  const actingUserId = await requireAdmin(prisma, req, reply);
+  if (!actingUserId) return;
+  const { id } = req.params as { id: string };
+  const body = req.body as { projectIds?: string[] };
+  if (!Array.isArray(body?.projectIds)) return reply.code(400).send({ error: "Corps de requête invalide." });
+  const projects = await prisma.project.findMany({ where: { id: { in: body.projectIds } }, select: { id: true, name: true } });
+  const projectNames = new Map(projects.map((p) => [p.id, p.name]));
+  await setAccessForUser(prisma, id, body.projectIds, actingUserId === "desktop" ? undefined : actingUserId, projectNames);
+  return { ok: true };
+});
+
+app.get("/api/notifications", async (req) => {
+  if (isDesktopMode || !req.userId) return [];
+  return listNotifications(prisma, req.userId);
+});
+
+app.post("/api/notifications/:id/read", async (req, reply) => {
+  if (isDesktopMode || !req.userId) return { ok: true };
+  const { id } = req.params as { id: string };
+  await markNotificationRead(prisma, req.userId, id);
+  return { ok: true };
+});
+
+app.post("/api/notifications/read-all", async (req) => {
+  if (isDesktopMode || !req.userId) return { ok: true, count: 0 };
+  const count = await markAllNotificationsRead(prisma, req.userId);
   return { ok: true, count };
 });
 

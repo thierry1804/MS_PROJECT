@@ -157,7 +157,7 @@ export function TaskGrid({
         <col style={{ width: 52 }} />
         <col style={{ width: 62 }} />
         <col style={{ width: 62 }} />
-        <col style={{ width: 44 }} />
+        <col style={{ width: 56 }} />
         {showVariance && (
           <>
             <col style={{ width: 52 }} />

@@ -1,0 +1,13 @@
+# Dumps the local Postgres container daily (see infra/scripts/backup-db.sh).
+#
+# Installation :
+#   sudo cp infra/systemd/atelier-backup.service infra/systemd/atelier-backup.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now atelier-backup.timer
+[Unit]
+Description=Sauvegarde quotidienne de la base Postgres atelier
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/home/debian/MS_PROJECT/infra/scripts/backup-db.sh

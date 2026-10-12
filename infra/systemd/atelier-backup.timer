@@ -1,0 +1,10 @@
+[Unit]
+Description=Déclenche atelier-backup.service tous les jours à 02:15
+
+[Timer]
+OnCalendar=*-*-* 02:15:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

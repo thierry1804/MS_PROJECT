@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { NAV_ITEMS } from "../Shell";
+import { visibleNavItems } from "../Shell";
+import { getCurrentUser } from "../auth";
 import { useStore } from "../store";
 
 interface Entry {
@@ -17,12 +18,13 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const role = getCurrentUser().role;
   const entries = useMemo<Entry[]>(
     () => [
-      ...NAV_ITEMS.map((n) => ({ key: n.to, label: n.label, to: n.to })),
+      ...visibleNavItems(role, projects.length > 0).map((n) => ({ key: n.to, label: n.label, to: n.to })),
       ...projects.map((p) => ({ key: p.id, label: p.name, sub: p.code, to: `/projets/${p.id}` })),
     ],
-    [projects],
+    [projects, role],
   );
 
   const filtered = useMemo(() => {

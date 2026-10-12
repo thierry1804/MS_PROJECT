@@ -270,6 +270,67 @@ model CustomFieldDef {
   @@map("custom_field_def")
 }
 
+/// Compte applicatif protégeant l'accès web (session cookie, voir apps/api/src/auth.ts).
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String?
+  role         String   @default("member") @map("role") // "admin" | "member"
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  /// Historical fact, set only when a session is created.
+  lastLoginAt  DateTime? @map("last_login_at")
+  lastLoginIp  String?   @map("last_login_ip")
+  /// Live presence, refreshed by the frontend heartbeat (apps/api/src/server.ts
+  /// POST /api/auth/heartbeat) — decays to "offline" in the UI once stale.
+  lastSeenAt   DateTime? @map("last_seen_at")
+  lastSeenIp   String?   @map("last_seen_ip")
+  lastSeenPath String?   @map("last_seen_path")
+
+  projectAccess ProjectAccess[]
+  notifications Notification[]
+
+  @@map("user")
+}
+
+/// projectId est une string brute SANS @relation vers Project : replacePortfolio
+/// supprime/recrée les lignes Project à chaque sauvegarde (voir Task.parentId /
+/// Dependency.predecessorId pour la même logique) — une FK cascade détruirait
+/// ce droit dès que le projet référencé est réécrit.
+model ProjectAccess {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId String   @map("project_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  grantedBy String?  @map("granted_by")
+
+  @@unique([userId, projectId])
+  @@index([userId])
+  @@map("project_access")
+}
+
+/// projectId plain string for the same reason as ProjectAccess — a notification
+/// must survive even if the referenced project is later deleted/renamed, so
+/// projectName/raidItemLabel are snapshotted at creation time.
+model Notification {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type          String // "project_access_granted" | "project_access_revoked" | "raid_assigned"
+  projectId     String?  @map("project_id")
+  projectName   String?  @map("project_name")
+  raidKind      String?  @map("raid_kind") // "risks" | "actions" | "issues"
+  raidItemId    String?  @map("raid_item_id")
+  raidItemLabel String?  @map("raid_item_label")
+  read          Boolean  @default(false)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([userId, read])
+  @@map("notification")
+}
+
 /// Copilot learning memory — singleton per portfolio, synced separately from portfolio PUT.
 model CopilotMemory {
   portfolioId     String   @id @default("default") @map("portfolio_id")

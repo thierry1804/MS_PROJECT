@@ -11,3 +11,5 @@ apps/api/data/
 apps/api/prisma/data/
 apps/api/src/generated/
 .claude/settings.local.json
+.claude/agents/
+.claude/skills/

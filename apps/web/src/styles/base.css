@@ -198,7 +198,8 @@ select {
 }
 
 .sync-status.error .sync-dot,
-.sync-status.offline .sync-dot {
+.sync-status.offline .sync-dot,
+.sync-status.access_revoked .sync-dot {
   background: var(--critical);
 }
 

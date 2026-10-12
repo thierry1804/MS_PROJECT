@@ -60,11 +60,24 @@
 
 .audit-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 14px;
   padding: 8px 4px;
   border-bottom: 1px solid var(--paper-2);
   font-size: var(--fs-sm);
+}
+
+.audit-list .audit-row:hover {
+  background: var(--paper-1);
+}
+
+.audit-head {
+  padding: 0 4px 8px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ink-3);
 }
 
 .audit-date {
@@ -76,16 +89,34 @@
 
 .audit-entity {
   flex-shrink: 0;
-  width: 72px;
+  width: 92px;
+}
+
+.audit-entity-badge {
+  flex-shrink: 0;
+  width: 92px;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--paper-2);
+  color: var(--ink-1);
   font-size: var(--fs-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--ink-2);
+  font-weight: 500;
 }
 
 .audit-summary {
   color: var(--ink-1);
+}
+
+.audit-actor {
+  flex-shrink: 0;
+  width: 150px;
+  color: var(--ink-2);
+  font-size: var(--fs-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .audit-pager {
