@@ -7,6 +7,7 @@ import {
   prisma,
 } from "./db.js";
 import { getPortfolio, getPortfolioMeta, replacePortfolio } from "./portfolio.js";
+import { mergeCopilotMemory } from "./copilot-memory.js";
 import { ensureSyncState, readSyncState, setCloudConfig, updateSyncState } from "./sync-state.js";
 
 export interface SyncResult {
@@ -113,6 +114,7 @@ export async function runSync(): Promise<SyncResult> {
         preserveRevision: true,
       });
       await mergeAudit(prisma as unknown as PgPrismaClient, cloud);
+      await mergeCopilotMemory(prisma, cloud);
       await updateSyncState({
         lastSyncedAt: new Date(),
         lastLocalRevision: cloudMeta.revision,
@@ -132,6 +134,7 @@ export async function runSync(): Promise<SyncResult> {
         preserveRevision: true,
       });
       await mergeAudit(prisma as unknown as PgPrismaClient, cloud);
+      await mergeCopilotMemory(prisma, cloud);
       await updateSyncState({
         lastSyncedAt: new Date(),
         lastLocalRevision: localMeta.revision,
@@ -163,6 +166,7 @@ export async function runSync(): Promise<SyncResult> {
       });
     }
     await mergeAudit(prisma as unknown as PgPrismaClient, cloud);
+    await mergeCopilotMemory(prisma, cloud);
     await updateSyncState({
       lastSyncedAt: new Date(),
       lastLocalRevision: meta.revision,
@@ -198,6 +202,7 @@ export async function runSync(): Promise<SyncResult> {
       });
     }
     await mergeAudit(prisma as unknown as PgPrismaClient, cloud);
+    await mergeCopilotMemory(prisma, cloud);
     await updateSyncState({
       lastSyncedAt: new Date(),
       lastLocalRevision: localMeta.revision,
@@ -217,6 +222,7 @@ export async function runSync(): Promise<SyncResult> {
       });
     }
     await mergeAudit(prisma as unknown as PgPrismaClient, cloud);
+    await mergeCopilotMemory(prisma, cloud);
     await updateSyncState({
       lastSyncedAt: new Date(),
       lastLocalRevision: cloudMeta.revision,

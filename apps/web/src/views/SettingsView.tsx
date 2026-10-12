@@ -4,7 +4,9 @@ import { portfolioSidebarLabel } from "../domain";
 import {
   fetchAiConfig,
   fetchCloudSyncStatus,
+  fetchCopilotMemory,
   fetchDatabaseConfig,
+  resetCopilotMemoryApi,
   saveAiConfig,
   saveCloudConfig,
   saveDatabaseConfig,
@@ -13,6 +15,7 @@ import {
   type AiPreset,
   type CloudSyncStatus,
   type DatabaseConfigStatus,
+  type WireCopilotMemory,
 } from "../sync";
 import { isDesktopShell } from "../api-url";
 import { useStore } from "../store";
@@ -104,6 +107,10 @@ export function SettingsView() {
   const [aiMessage, setAiMessage] = useState<string | null>(null);
   const [aiSaved, setAiSaved] = useState(false);
 
+  const [copilotMemory, setCopilotMemory] = useState<WireCopilotMemory | null>(null);
+  const [copilotMemError, setCopilotMemError] = useState(false);
+  const [copilotResetting, setCopilotResetting] = useState(false);
+
   const desktopMode = isDesktopShell() || Boolean(cloudStatus?.desktop);
 
   useEffect(() => {
@@ -130,6 +137,9 @@ export function SettingsView() {
         if (status.model) setAiModel(status.model);
       })
       .catch(() => setAiError(true));
+    fetchCopilotMemory()
+      .then(setCopilotMemory)
+      .catch(() => setCopilotMemError(true));
   }, [dbSaved, cloudSaving, aiSaved]);
 
   function saveGeneral() {
@@ -602,6 +612,57 @@ export function SettingsView() {
               {aiSaving ? "Enregistrement…" : "Enregistrer"}
             </button>
           </footer>
+          </section>
+
+          <section className="set-card set-card-wide">
+            <div className="set-card-head">
+              <h2>Copilot — mémoire d'apprentissage</h2>
+              <p className="set-hint">
+                Préférences et corrections mémorisées par le panneau Copilot. Synchronisées avec Neon en mode desktop si la sync cloud est active.
+              </p>
+            </div>
+
+            {copilotMemError && (
+              <div className="set-callout warn">Impossible de charger la mémoire copilot.</div>
+            )}
+
+            {copilotMemory && (
+              <dl className="set-status">
+                <div className="set-status-row">
+                  <dt>Chef de projet par défaut</dt>
+                  <dd>{String(copilotMemory.preferences?.defaultProjectManager ?? "—")}</dd>
+                </div>
+                <div className="set-status-row">
+                  <dt>Désambiguïsations</dt>
+                  <dd>{copilotMemory.disambiguations?.length ?? 0}</dd>
+                </div>
+                <div className="set-status-row">
+                  <dt>Épisodes mémorisés</dt>
+                  <dd>{copilotMemory.episodes?.length ?? 0}</dd>
+                </div>
+                <div className="set-status-row">
+                  <dt>Révision</dt>
+                  <dd>{copilotMemory.revision}</dd>
+                </div>
+              </dl>
+            )}
+
+            <footer className="set-card-foot">
+              <button
+                className="set-save ghost"
+                type="button"
+                disabled={copilotResetting}
+                onClick={() => {
+                  if (!window.confirm("Réinitialiser toute la mémoire copilot ?")) return;
+                  setCopilotResetting(true);
+                  void resetCopilotMemoryApi()
+                    .then(setCopilotMemory)
+                    .finally(() => setCopilotResetting(false));
+                }}
+              >
+                {copilotResetting ? "Réinitialisation…" : "Réinitialiser la mémoire copilot"}
+              </button>
+            </footer>
           </section>
 
           <section className="set-card set-card-wide">

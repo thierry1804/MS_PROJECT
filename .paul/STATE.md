@@ -1,32 +1,37 @@
 ## Current Position
 
-Milestone: v0.2 Next Wave
-Phase: 1 of 1 (01-next-wave) — Planning
-Plan: 01-02 UNIFIED, next: 01-03 (inspector) or 01-04 (export)
-Status: Loop closed for 01-02, ready for next PLAN
-Last activity: 2026-07-03 — Unified 01-02: baseline UI + EVM strip complete
+Milestone: v0.4 Copilot PMO
+Phase: 1 of 1 (02-copilot-pmo) — Complete
+Plan: 02-01 through 02-10 implemented
+Status: UNIFY complete
+Last activity: 2026-07-17 — Copilot PMO milestone delivered
 
 Progress:
-- Milestone: [░░░░░░░░░░] 0%
-- Phase 01: [░░░░░░░░░░] 0%
+- Milestone v0.4: [██████████] 100%
+- Phase 02: [██████████] 100%
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ✓        ✓     [01-02 complete — next: 01-03 (inspector) or 01-04 (export)]
+  ✓        ✓        ✓     [10/10 plans done — typecheck + 65 tests green]
 ```
 
 ## Session Continuity
 
-Last session: 2026-07-03
-Stopped at: Plan 01-01 created
-Next action: Review and approve plans 01-01 through 01-04, then run /paul:apply .paul/phases/01-next-wave/01-01-PLAN.md
-Resume file: .paul/phases/01-next-wave/01-01-PLAN.md
+Last session: 2026-07-17
+Stopped at: Milestone v0.4 Copilot PMO complete
+Next action: Human-verify CopilotPanel in dev:stack ; optional v0.5 backlog (Ctrl+K shortcut)
+Resume file: .paul/ROADMAP.md
 
 ## Decisions
 | Date | Decision | Reason |
 |------|----------|--------|
 | 2026-07-03 | Split next wave into 4 plans (01-01 to 01-04) | Engine changes isolated from UI; inspector depends on store actions |
 | 2026-07-03 | baseline stored as fields on Task (not separate snapshot object) | Avoids breaking WeakMap cache and keeps engine types self-contained |
+| 2026-07-17 | Copilot UI = panneau latéral Shell | Visibilité permanente ; cohérent avec RiskAssistWizard existant |
+| 2026-07-17 | CopilotMemory table + sync Neon | Mémoire d'apprentissage partagée entre postes desktop |
+| 2026-07-17 | Mutations copilot via action registry → store | Une seule source de vérité métier ; pas de PATCH API granulaire |
+| 2026-07-17 | actor audit "copilot" pour mutations assistant | Traçabilité PMO humain vs IA |
+| 2026-07-17 | Pas de fine-tuning LLM | Few-shot + preferences JSON suffisent pour v0.4 |

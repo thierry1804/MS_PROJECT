@@ -269,3 +269,16 @@ model CustomFieldDef {
   @@index([portfolioId])
   @@map("custom_field_def")
 }
+
+/// Copilot learning memory — singleton per portfolio, synced separately from portfolio PUT.
+model CopilotMemory {
+  portfolioId     String   @id @default("default") @map("portfolio_id")
+  preferences     Json     @default("{}")
+  disambiguations Json     @default("[]")
+  episodes        Json     @default("[]")
+  questionStats   Json     @default("{}") @map("question_stats")
+  revision        Int      @default(0)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("copilot_memory")
+}

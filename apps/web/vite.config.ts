@@ -6,6 +6,9 @@ const isTauri = Boolean(process.env.TAURI_ENV_PLATFORM);
 
 export default defineConfig({
   plugins: [react()],
+  test: {
+    setupFiles: ["./src/test-setup.ts"],
+  },
   clearScreen: false,
   envPrefix: ["VITE_", "TAURI_"],
   server: {

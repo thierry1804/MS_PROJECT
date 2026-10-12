@@ -1,4 +1,5 @@
 import type { Portfolio } from "./domain";
+import type { WireCopilotMemory } from "./copilot/types";
 import type { RiskAssistRequest, RiskAssistResponse } from "./risk-assist/types";
 import { apiUrl } from "./api-url";
 
@@ -183,19 +184,93 @@ export async function fetchRiskAssist(payload: RiskAssistRequest): Promise<RiskA
   return (await res.json()) as RiskAssistResponse;
 }
 
+export type { WireCopilotMemory } from "./copilot/types";
+
+export async function fetchCopilotMemory(): Promise<WireCopilotMemory> {
+  const res = await fetch(apiUrl("/api/copilot/memory"));
+  if (!res.ok) throw new Error(`GET /api/copilot/memory → ${res.status}`);
+  return (await res.json()) as WireCopilotMemory;
+}
+
+export async function saveCopilotMemory(memory: WireCopilotMemory): Promise<WireCopilotMemory> {
+  const res = await fetch(apiUrl("/api/copilot/memory"), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(memory),
+  });
+  if (res.status === 409) {
+    const body = (await res.json()) as { currentRevision?: number };
+    throw new Error(`Révision obsolète (${body.currentRevision ?? "?"})`);
+  }
+  if (!res.ok) throw new Error(`PUT /api/copilot/memory → ${res.status}`);
+  return (await res.json()) as WireCopilotMemory;
+}
+
+export async function resetCopilotMemoryApi(): Promise<WireCopilotMemory> {
+  const res = await fetch(apiUrl("/api/copilot/memory"), { method: "DELETE" });
+  if (!res.ok) throw new Error(`DELETE /api/copilot/memory → ${res.status}`);
+  return (await res.json()) as WireCopilotMemory;
+}
+
+export interface CopilotChatRequest {
+  message: string;
+  session: { intent?: string; slots: Record<string, unknown>; phase: string };
+  portfolioContext: unknown;
+  memory?: { episodes: unknown[] };
+  intentCatalog: { id: string; label: string; description: string; requiredSlots: string[] }[];
+}
+
+export interface CopilotChatResponseWire {
+  intent?: string;
+  extractedSlots: Record<string, unknown>;
+  suggestedQuestions: {
+    id: string;
+    text: string;
+    type: string;
+    slotKey: string;
+    choices?: { id: string; label: string }[];
+  }[];
+  assistantMessage: string;
+  confidence: number;
+}
+
+export async function fetchCopilotChat(body: CopilotChatRequest): Promise<CopilotChatResponseWire> {
+  const res = await fetch(apiUrl("/api/copilot/chat"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = (await res.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(err?.error ?? `POST /api/copilot/chat → ${res.status}`);
+  }
+  return (await res.json()) as CopilotChatResponseWire;
+}
+
 /** Best-effort: an audit entry that fails to save must never block the actual edit. */
+let auditActor = "—";
+
+export function setAuditActor(actor: string): void {
+  auditActor = actor;
+}
+
+export function resetAuditActor(): void {
+  auditActor = "—";
+}
+
 export async function logAudit(entry: {
   entityType: string;
   entityId: string;
   action: string;
   summary: string;
   detail?: unknown;
+  actor?: string;
 }): Promise<void> {
   try {
     await fetch(apiUrl("/api/audit"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(entry),
+      body: JSON.stringify({ ...entry, actor: entry.actor ?? auditActor }),
     });
   } catch {
     // ignore — audit logging is not allowed to break the user's edit

@@ -17,6 +17,13 @@ import {
 import type { WirePortfolio } from "./types.js";
 import { getAiConfigStatus, readRuntimeAiConfig, writeRuntimeAiConfig, type AiPreset } from "./ai-config.js";
 import { runRiskAssist, testAiConnection, type RiskAssistRequestBody } from "./risk-assist.js";
+import {
+  CopilotMemoryConflictError,
+  getCopilotMemory,
+  replaceCopilotMemory,
+  resetCopilotMemory,
+} from "./copilot-memory.js";
+import { runCopilotChat, runCopilotChatHeuristic, type CopilotChatRequestBody } from "./copilot.js";
 
 function isDatabaseUnreachable(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
@@ -211,9 +218,46 @@ app.post("/api/risk-assist", async (req, reply) => {
   return runRiskAssist(body);
 });
 
+app.get("/api/copilot/memory", async () => getCopilotMemory(prisma));
+
+app.put("/api/copilot/memory", async (req, reply) => {
+  const body = req.body as Parameters<typeof replaceCopilotMemory>[1];
+  if (body == null || typeof body.revision !== "number") {
+    return reply.code(400).send({ error: "Corps de requête invalide." });
+  }
+  try {
+    return await replaceCopilotMemory(prisma, body);
+  } catch (e) {
+    if (e instanceof CopilotMemoryConflictError) {
+      return reply.code(409).send({ error: e.message, currentRevision: e.currentRevision });
+    }
+    throw e;
+  }
+});
+
+app.delete("/api/copilot/memory", async () => resetCopilotMemory(prisma));
+
+app.post("/api/copilot/chat", async (req, reply) => {
+  const body = req.body as CopilotChatRequestBody;
+  if (!body?.message || !body.intentCatalog) {
+    return reply.code(400).send({ error: "Corps de requête invalide." });
+  }
+  try {
+    return await runCopilotChat(body);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Erreur IA";
+    if (msg.includes("non configurée")) {
+      return reply.code(503).send({ error: msg });
+    }
+    return runCopilotChatHeuristic(body);
+  }
+});
+
 // 8787 is inside Windows Hyper-V/WSL excluded range 8748–8847 (EACCES).
 const port = Number(process.env.PORT ?? 8888);
-app.listen({ port, host: "127.0.0.1" }).catch((err) => {
+// 127.0.0.1 keeps desktop/local dev loopback-only; Docker sets HOST=0.0.0.0 to accept the reverse proxy.
+const host = process.env.HOST ?? "127.0.0.1";
+app.listen({ port, host }).catch((err) => {
   app.log.error(err);
   process.exit(1);
 });
