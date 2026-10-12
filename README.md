@@ -24,7 +24,7 @@ pnpm --filter @atelier/api db:push       # créer le schéma en base
 pnpm dev:stack    # web + API en parallèle (recommandé)
 pnpm dev:api      # API seule sur http://localhost:8888
 pnpm dev          # web seule sur http://localhost:5173 (proxy /api → 8888)
-pnpm test         # 26 tests Vitest (moteur CPM)
+pnpm test         # 65 tests Vitest (moteur CPM + copilot + import)
 pnpm typecheck    # vérification TypeScript sur tout le monorepo
 pnpm build        # build production (web + compile API)
 ```
@@ -76,7 +76,7 @@ packages/scheduling-engine   # moteur pur TS : CPM, calendriers, EVM, charge, ni
 | `/journal` | Journal d'activité | Audit append-only, filtrable, paginé |
 | `/parametres` | Paramètres | Identité app, exercice, Neon, champs personnalisés |
 
-Shell : sidebar repliable, filtre projets, palette de commandes (`Ctrl+K` / `⌘K`), indicateur de sync.
+Shell : sidebar repliable, filtre projets, palette de commandes (`Ctrl+K` / `⌘K`), panneau **Copilot** (320 px), indicateur de sync.
 
 ## Moteur d'ordonnancement (`packages/scheduling-engine`)
 
@@ -86,7 +86,7 @@ Shell : sidebar repliable, filtre projets, palette de commandes (`Ctrl+K` / `⌘
 - **EVM** : BAC, PV, EV, AC, SPI, CPI, EAC, ETC, SV, CV, PV mesurée à la date du jour.
 - **Charge** : détection des surallocations journalières, matrice de charge par ressource.
 - **Nivellement** : passe heuristique unique, ajoute des contraintes SNET pour décaler les tâches surchargées.
-- **Tests** : 26 tests Vitest (19 CPM, 3 métriques, 4 nivellement).
+- **Tests** : 32 tests Vitest (19 CPM, 3 métriques, 4 nivellement).
 
 ## Fonctionnalités
 
@@ -152,6 +152,16 @@ Saisie intégrée : événements de gouvernance (comité portefeuille, revue pro
 - Filtre par projet, KPI de synthèse, CRUD par registre.
 - **Assistant risque** : analyse heuristique du contexte projet (CPI, retards, charge, issues) + enrichissement LLM optionnel (OpenRouter / OpenAI-compatible). Wizard en 4 étapes : entrée minimale, propositions, affinage adaptatif, validation avec création d'actions liées.
 
+### Copilot PMO
+
+Assistant conversationnel intégré au shell (bouton **Copilot**, panneau latéral 320 px à droite).
+
+- **Intents** : ~25 actions couvrant lecture portefeuille (santé RAG, RAID, pipeline, charge), mutations projet/RAID/pipeline/planning.
+- **Dialogue adaptatif** : extraction de slots depuis le message, questions ciblées si informations manquantes, preview avant toute mutation destructive.
+- **Exécution** : registre d'actions → store Zustand (mêmes validations que l'UI manuelle) ; audit avec `actor: "copilot"`.
+- **LLM** : `POST /api/copilot/chat` via OpenRouter (config **Paramètres → Assistant IA**) ; fallback heuristique côté client si non configuré.
+- **Mémoire d'apprentissage** : table `CopilotMemory` (préférences, désambiguïsations, épisodes few-shot, stats questions) ; sync Neon bidirectionnelle en mode desktop ; réinitialisation depuis **Paramètres → Copilot**.
+
 ### Journal d'activité
 
 - Table append-only indépendante du cycle de sauvegarde portefeuille.
@@ -165,6 +175,7 @@ Saisie intégrée : événements de gouvernance (comité portefeuille, revue pro
 - Connexion Neon : URL pooler + URL directe optionnelle, test et reconnexion Prisma à chaud.
 - **Assistant IA** : clé API OpenRouter, modèle gratuit recommandé (`gpt-oss-120b:free`). Fallback heuristique si non configuré.
 - Champs personnalisés tâche : texte, nombre, liste de choix, éditables dans l'inspecteur.
+- **Copilot** : préférences mémorisées, compteurs épisodes/désambiguïsations, révision sync, bouton de réinitialisation.
 
 ## API
 
@@ -182,6 +193,10 @@ Saisie intégrée : événements de gouvernance (comité portefeuille, revue pro
 | PUT | `/api/config/ai` | Enregistrer clé / URL / modèle IA |
 | POST | `/api/config/ai/test` | Tester la connectivité LLM |
 | POST | `/api/risk-assist` | Analyse et enrichissement des risques proposés |
+| GET | `/api/copilot/memory` | Lire la mémoire d'apprentissage copilot |
+| PUT | `/api/copilot/memory` | Remplacer / fusionner la mémoire (revision optimiste) |
+| DELETE | `/api/copilot/memory` | Réinitialiser la mémoire copilot |
+| POST | `/api/copilot/chat` | Tour de dialogue LLM (intent + slots + questions) |
 
 Config runtime DB et IA persistées dans `apps/api/data/runtime-config.json` (prioritaire sur `.env`).
 
@@ -195,6 +210,8 @@ Singleton `Portfolio` (id `"default"`) contenant :
 - Calendrier portefeuille (jours ouvrés, fériés), nom app, exercice fiscal
 
 Entité séparée **AuditEntry** (append-only, jamais écrasée par le PUT portefeuille).
+
+Entité **CopilotMemory** (singleton, JSON structuré : préférences, désambiguïsations, épisodes, stats questions) ; fusionnée à chaque sync cloud desktop comme l'audit.
 
 Les unions de statuts (santé, stage, type dépendance…) sont des `String` côté Postgres ; les types TypeScript frontend en sont la source de vérité.
 

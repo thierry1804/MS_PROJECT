@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { CommandPalette } from "./components/CommandPalette";
+import { CopilotPanel } from "./components/CopilotPanel";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -32,6 +33,15 @@ const SYNC_LABEL: Record<SyncStatus, string> = {
 };
 
 const SIDEBAR_COLLAPSED_KEY = "atelier-sidebar-collapsed";
+const COPILOT_OPEN_KEY = "atelier-copilot-open";
+
+function readCopilotOpen(): boolean {
+  try {
+    return localStorage.getItem(COPILOT_OPEN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 export const NAV_ITEMS: { to: string; end?: boolean; label: string; icon: ReactNode }[] = [
   { to: "/", end: true, label: "Vue portefeuille", icon: <PortfolioNavIcon /> },
@@ -68,6 +78,19 @@ export function Shell() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
+  const [copilotOpen, setCopilotOpen] = useState(readCopilotOpen);
+
+  function toggleCopilot() {
+    setCopilotOpen((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(COPILOT_OPEN_KEY, next ? "1" : "0");
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }
 
   function toggleSidebarCollapsed() {
     setSidebarCollapsed((prev) => {
@@ -223,17 +246,27 @@ export function Shell() {
           )}
         </div>
       </aside>
-      <main className="main">
-        <button
-          type="button"
-          className="sidebar-toggle"
-          onClick={() => setSidebarOpen(true)}
-          aria-label="Ouvrir le menu"
-        >
-          <MenuIcon />
-        </button>
-        <Outlet />
-      </main>
+      <div className="shell-body">
+        <main className="main">
+          <div className="main-head">
+            <button
+              type="button"
+              className="sidebar-toggle"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Ouvrir le menu"
+            >
+              <MenuIcon />
+            </button>
+            <button type="button" className="copilot-toggle" onClick={toggleCopilot}>
+              Copilot
+            </button>
+          </div>
+          <div className="main-content">
+            <Outlet />
+          </div>
+        </main>
+        {copilotOpen && <CopilotPanel onClose={toggleCopilot} />}
+      </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>
   );
