@@ -255,7 +255,9 @@ app.post("/api/copilot/chat", async (req, reply) => {
 
 // 8787 is inside Windows Hyper-V/WSL excluded range 8748–8847 (EACCES).
 const port = Number(process.env.PORT ?? 8888);
-app.listen({ port, host: "127.0.0.1" }).catch((err) => {
+// 127.0.0.1 keeps desktop/local dev loopback-only; Docker sets HOST=0.0.0.0 to accept the reverse proxy.
+const host = process.env.HOST ?? "127.0.0.1";
+app.listen({ port, host }).catch((err) => {
   app.log.error(err);
   process.exit(1);
 });

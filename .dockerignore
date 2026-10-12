@@ -1,0 +1,17 @@
+node_modules
+**/node_modules
+dist
+**/dist
+.git
+apps/api/src/generated
+apps/api/data
+apps/api/prisma/data
+apps/desktop/src-tauri/target
+apps/desktop/src-tauri/.gitignore
+.paul
+.claude
+coverage
+*.local
+.env
+.env.*
+!.env.example

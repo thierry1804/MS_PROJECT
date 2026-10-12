@@ -10,3 +10,4 @@ coverage/
 apps/api/data/
 apps/api/prisma/data/
 apps/api/src/generated/
+.claude/settings.local.json
